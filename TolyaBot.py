@@ -45,10 +45,11 @@ client = TelegramClient('theker', api_id, api_hash).start(bot_token=bot_token)
 logging.basicConfig(format='[%(levelname) 5s/%(asctime)s] %(name)s: %(message)s',
                     level=logging.WARNING)
 
+print('Bot has been started')
 
 con = sqlite3.connect('Truster.db')
 cur = con.cursor()               
-
+print('Database has been loaded')
 
 @client.on(events.NewMessage(pattern='/start'))
 async def start_command(event):
