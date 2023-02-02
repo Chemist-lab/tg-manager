@@ -515,6 +515,7 @@ async def Create_PhotoPack(photo_dir, new_name, counts, params):
 
             cur.execute(f"INSERT INTO bot_library VALUES ({userid}, '{new_name}', {i}, '{full_name}')")
             con.commit()
+            print(f"Image {full_name} - created. ")
         return 0
 
     except Exception as e:
