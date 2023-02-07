@@ -15,7 +15,7 @@ async def start_command(event):
         con.commit()
     buttons = []
     buttons.append(Button.inline('Получить фото', 'get_photos'))
-    await client.send_message(event.sender_id, "msg", buttons=buttons)
+    await client.send_message(event.sender_id, 'Привет! Я могу выдать тебе 4к картинки из канала legionCumMander. Для того, чтобы начать нажми "start"', buttons=buttons)
 
 
 @client.on(events.CallbackQuery(data='get_photos'))
@@ -37,7 +37,6 @@ async def user_get_image(event):
             _buttons.append(Button.inline(name, bytes(name_id)))
 
     _buttons = await convert_1d_to_2d(_buttons, 3)
-
     await client.edit_message(sender_id, event.message_id,"Выберите фото", buttons = _buttons)
 
 

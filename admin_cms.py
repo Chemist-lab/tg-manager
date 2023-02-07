@@ -112,6 +112,7 @@ async def admin_cms(event):
         del admin_state_memory[f'inp_path_{who}']
         del admin_state_memory[f'image_new_name_{who}']
 
+
 @client.on(events.NewMessage(pattern='/deletephoto', chats=BOT_ADMIN_ID))
 async def admin_cms(event):
     who = event.sender_id
