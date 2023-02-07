@@ -1,11 +1,4 @@
-# 23465764
-# b0d09e5fdddd42e50eb821496550eb4c
-
 from enum import Enum, auto
-
-import logging
-
-import sqlite3
 
 from PIL import Image, ImageFont, ImageDraw 
 
@@ -13,135 +6,14 @@ import shutil
 
 import os
 
-import glob
-
 from pathlib import Path
 
-from telethon import TelegramClient, events
-from telethon.tl.functions.channels import GetParticipantsRequest
-from telethon.tl.types import ChannelParticipantsSearch
+from telethon import events
 from telethon.tl.custom import Button
 
-from telethon import functions, types
-
-api_id = 23465764
-
-api_hash = 'b0d09e5fdddd42e50eb821496550eb4c'
-
-bot_token = '5954105293:AAGyBr1KALNvWI77gil4jQAFk_BfvaFWfhA'
-
-channel_id = -1001802630395
-
-BOT_ADMIN_ID = [657110596, 406974309]
-# 657110596
-TG_SAVE_PATH = 'input/'
-
-SAVE_FOLDER = "outp/"
-
-
-# We have to manually call "start" if we want an explicit bot token
-client = TelegramClient('theker', api_id, api_hash).start(bot_token=bot_token)
-
-logging.basicConfig(format='[%(levelname) 5s/%(asctime)s] %(name)s: %(message)s',
-                    level=logging.WARNING)
-
-print('Bot has been started')
-
-con = sqlite3.connect('Truster.db')
-cur = con.cursor()               
-print('Database has been loaded')
-
-@client.on(events.NewMessage(pattern='/start'))
-async def start_command(event):
-    sender_id = int(event.sender_id)
-    cur.execute('SELECT user_id FROM user_list WHERE user_id = ?', (sender_id,))
-    _data=cur.fetchall()
-
-    if len(_data) == 0:
-        cur.execute(f"INSERT INTO user_list VALUES ({sender_id}, 'True')")
-        con.commit()
-    buttons = []
-    buttons.append(Button.inline('Получить фото', 'get_photos'))
-    await client.send_message(event.sender_id, "msg", buttons=buttons)
-
-
-async def convert_1d_to_2d(l, cols):
-    return [l[i:i + cols] for i in range(0, len(l), cols)]
-
-
-@client.on(events.CallbackQuery(data='get_photos'))
-async def user_get_image(event):
-    sender_id = event.sender_id
-    cur.execute("SELECT * FROM image_list")
-    _data = cur.fetchall()
-
-    _buttons = []
-
-    if len(_data) == 0:
-        await client.send_message(sender_id,"В базе данных нет фото")
-        return
-
-    for row in _data:
-        if row[1] == 'True':
-            name = row[0]
-            name_id = f"{name}_{sender_id}gi_usr_btn".encode("utf-8")
-            _buttons.append(Button.inline(name, bytes(name_id)))
-
-    _buttons = await convert_1d_to_2d(_buttons, 3)
-
-    await client.edit_message(sender_id, event.message_id,"Выберите фото", buttons = _buttons)
-
-
-@client.on(events.CallbackQuery())
-async def user_image_callback(event):
-    sender_id = event.sender_id
-    edata_d = event.data.decode('utf-8')
-    if f'_{sender_id}gi_usr_btn' in edata_d:
-        clear_data = edata_d.replace(f"_{sender_id}gi_usr_btn", '')
-        cur.execute("SELECT * FROM image_list")
-        _data = cur.fetchall()
-        for row in _data:
-            if row[1] == 'True':
-                name = row[0]
-                if name == clear_data:
-                    await send_nudes(sender_id, name)
-                    break
-        await client.delete_messages(sender_id, event.message_id)
-
-async def send_nudes(user_id, photo_name):
-    if await check_user(user_id) == False:
-        await client.send_message(user_id,"У вас нет подписки")
-        return
-
-    cur.execute("SELECT user_id, picture_name FROM bot_library WHERE user_id=? AND picture_name=?", (user_id, photo_name,))
-    _data=cur.fetchall()
-    if len(_data) == 0:
-        cur.execute("SELECT rowid, * FROM bot_library WHERE user_id='0' AND picture_name=?", (photo_name,))
-        _data=cur.fetchone()
-        rowid_ = _data[0]
-        cur.execute(f"UPDATE bot_library SET user_id='{user_id}' WHERE rowid='{rowid_}'")
-        con.commit()
-
-    cur.execute("SELECT picture_fullname FROM bot_library WHERE user_id=? AND picture_name=?", (user_id, photo_name))
-    _data=cur.fetchall()
-    picture_fullname = _data[0][0]
-    photopath = f"{SAVE_FOLDER}{photo_name}/"
-
-    for fn in Path(photopath).glob(f'{picture_fullname}.*'):
-        photopath = fn
-        print(fn)
-
-    await client.send_file(user_id, file=f'{photopath}', force_document=True)
-
-
-async def check_user(user_id):
-    active_users = await client.get_participants(channel_id, aggressive=False, limit=2000)
-    for i in active_users:
-        if int(user_id) == int(i.id):
-            return True
-            break
-
-    else: return False
+from config import *
+from function import *
+from database_manager import *
 
 
 #ADMIN CMS FSM
@@ -167,7 +39,6 @@ class SetImageAccessState(Enum):
 admin_state = {}
 
 admin_state_memory = {}
-
 
 @client.on(events.NewMessage(pattern='/admin', chats=BOT_ADMIN_ID))
 async def admin_command(event):
@@ -228,7 +99,9 @@ async def admin_cms(event):
         path = admin_state_memory[f'inp_path_{who}']
         image_new_name = admin_state_memory[f'image_new_name_{who}']
         params =  admin_state_memory[f'image_params_{who}']
+
         res = (await Create_PhotoPack(path, image_new_name, image_counts, params))
+
         if res == 0:
             await event.respond(f'Создано {image_counts} фото.')
         elif res == 1:
@@ -456,24 +329,18 @@ async def Create_PhotoPack(photo_dir, new_name, counts, params):
     t_pos = params[0].split(' ')
     t_hex = params[1].split(' ')
     t_hex = str(t_hex[0])
-    print(f'\n\n\n\n{t_hex}\n\n\n\n\n')
-    t_opacity = params[2]
-    t_scale = params[3]
+
+    t_opacity = int(params[2])
+    t_scale = int(params[3])
+
     rgb = tuple(int(t_hex[i:i+2], 16) for i in (0, 2, 4))
+
     x = int(t_pos[0])
     y = int(t_pos[1])
-    r = int(rgb[0])
-    g = int(rgb[1])
-    b = int(rgb[2])
-    a = int(t_opacity)
-    s = int(t_scale)
 
-    a = int((a*255)/100)
-
-    # active_users = await client.get_participants(channel_id, aggressive=False, limit=2000)
-
+    a = int((t_opacity*255)/100)
     try:
-        title_font = ImageFont.truetype('fonts/PlayfairDisplay-Medium.ttf', s)
+        title_font = ImageFont.truetype('fonts/PlayfairDisplay-Medium.ttf', t_scale)
         path = os.path.join(SAVE_FOLDER, new_name)
         try:
             os.mkdir(str(path)) 
@@ -489,6 +356,7 @@ async def Create_PhotoPack(photo_dir, new_name, counts, params):
 
         cur.execute(f"INSERT INTO image_list VALUES ('{new_name}', 'False')")
         con.commit()
+
         for i in range(0, int(counts)):
             userid = None
             full_name = f"{new_name}_{i}"
@@ -505,11 +373,12 @@ async def Create_PhotoPack(photo_dir, new_name, counts, params):
 
             txt = Image.new("RGBA", my_image.size, (255, 255, 255, 0))
             d = ImageDraw.Draw(txt)
-            d.text((x, y), str(title_text), font=title_font, fill=(r, g, b, a))
+            d.text((x, y), str(title_text), font=title_font, fill=(rgb[0], rgb[1], rgb[2], a))
 
             my_image = Image.alpha_composite(my_image, txt).convert("RGB")
 
             my_image.save(f"{path}/{new_name}_{i}.png", "PNG")
+
             # my_image.save(f"{path}/{new_name}_{i}.{format}")
             my_image.close()
 
@@ -521,9 +390,3 @@ async def Create_PhotoPack(photo_dir, new_name, counts, params):
     except Exception as e:
         print(e)
         return 1
-
-
-
-
-client.start()
-client.run_until_disconnected()
