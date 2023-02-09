@@ -90,27 +90,27 @@ async def admin_cms(event):
         admin_state[who] = CreateDeletePhotoPackState.IMAGE_NEW_NAME
 
     elif state == CreateDeletePhotoPackState.IMAGE_NEW_NAME:
-        admin_state_memory[f'image_params_{who}'] = event.text
-        await event.respond('Хорошо! Задайте количество фото(дефотное значение 10):')
-        admin_state[who] = CreateDeletePhotoPackState.IMAGES_COUNT
 
-    elif state == CreateDeletePhotoPackState.IMAGES_COUNT:
-        image_counts = event.text
         path = admin_state_memory[f'inp_path_{who}']
         image_new_name = admin_state_memory[f'image_new_name_{who}']
-        params =  admin_state_memory[f'image_params_{who}']
+        params =  event.text
 
-        res = (await Create_PhotoPack(path, image_new_name, image_counts, params))
-
-        if res == 0:
-            await event.respond(f'Создано {image_counts} фото.')
-        elif res == 1:
-            await event.respond(f'Произошла ошибка')
-        elif res == 2:
-            await event.respond(f'Такое изображение уже есть в базе данных, удалите сначала старое изображение!')
+        res = (await save_photo_to_lib(who, image_new_name, params, path))
+        await client.send_message(who, "Изображение успешно добавлено")
         del admin_state[who]
         del admin_state_memory[f'inp_path_{who}']
         del admin_state_memory[f'image_new_name_{who}']
+
+
+
+async def save_photo_to_lib(_user_id, _picture_name, _params, _image_path):
+    cur.execute("SELECT * FROM image_list WHERE picture_name=?", (_picture_name,))
+    _data=cur.fetchall()
+    if len(_data) != 0:
+        return 2
+    cur.execute(f"INSERT INTO image_list VALUES ('{_user_id}', '{_picture_name}', 'False', '{_params}', '{_image_path}')")
+    con.commit()
+    return 0
 
 
 @client.on(events.NewMessage(pattern='/deletephoto', chats=BOT_ADMIN_ID))
@@ -125,7 +125,7 @@ async def admin_cms(event):
         return
 
     for row in _data:
-        name = row[0]
+        name = row[1]
         name_id = f"{name}_{who}_gi_del_a_b".encode("utf-8")
         _buttons.append(Button.inline(name, bytes(name_id)))
 
@@ -152,7 +152,7 @@ async def admin_cms(event):
                 return
 
             for row in _data:
-                name = row[0]
+                name = row[1]
                 name_id = f"{name}_get_user_by_image_admin_btn".encode("utf-8")
                 _buttons.append(Button.inline(name, bytes(name_id)))
 
@@ -167,20 +167,24 @@ async def admin_cms(event):
         
         photo_name = admin_state_memory[f'get_image_name_state_{who}']
         photo_fullname = f"{photo_name}_{image_num}"
-        photopath = f"{SAVE_FOLDER}{photo_name}/"
-        for fn in Path(photopath).glob(f'{photo_fullname}.*'):
-            photopath = fn
+        # photopath = f"{SAVE_FOLDER}{photo_name}/"
+        # for fn in Path(photopath).glob(f'{photo_fullname}.*'):
+        #     photopath = fn
 
-        await client.send_file(who, file=f'{photopath}', force_document=True)
+        # await client.send_file(who, file=f'{photopath}', force_document=True)
 
-        cur.execute("SELECT user_id FROM bot_library WHERE picture_fullname=?", (photo_fullname,))
+        cur.execute("SELECT user_id FROM bot_library WHERE picture_name=? AND picture_pos=?", (photo_name, image_num,))
         _data=cur.fetchall()
-        g_user_id = _data[0][0]
+        print(f"\n\n\n\nndata {_data}\n\n\n\n\n")
+        g_user_id = 0
 
-        if g_user_id == 0:
+        if len(_data) == 0:
             await event.respond(f'Изображение с нумерацией "{image_num}" никто не скачал')
+            del admin_state[who]
+
             return
         
+        g_user_id = _data[0][0]
         req_user = await client.get_entity(g_user_id)
 
         g_user_name = req_user.username
@@ -213,7 +217,7 @@ async def admin_cms(event):
         
         _buttons = []
         for row in _data:
-            name = row[0]
+            name = row[1]
             name_id = f"{name}_image_to_set_accsess_admin_btn".encode("utf-8")
             _buttons.append(Button.inline(name, bytes(name_id)))
         _buttons = await convert_1d_to_2d(_buttons, 3)
@@ -307,8 +311,8 @@ async def admin_cms_callback(event):
             selected_image_name = ''
             if f'_i_yes_del_adm_btn' in edata_d:
                 selected_image_name = edata_d.replace(f"_i_yes_del_adm_btn", '')
-                photopath = f"{SAVE_FOLDER}{selected_image_name}"
-                shutil.rmtree(photopath)
+                # photopath = f"{SAVE_FOLDER}{selected_image_name}"
+                # shutil.rmtree(photopath)
                 cur.execute("DELETE FROM image_list WHERE picture_name=?", (selected_image_name,))
                 cur.execute("DELETE FROM bot_library WHERE picture_name=?", (selected_image_name,))
                 con.commit()
@@ -361,11 +365,6 @@ async def Create_PhotoPack(photo_dir, new_name, counts, params):
         for i in range(0, int(counts)):
             userid = None
             full_name = f"{new_name}_{i}"
-            # try:
-            #     # userid = active_users[i].id
-            #     userid = 0
-            # except:
-            #     userid = 0
             userid = 0
             my_image = Image.open(photo_dir)
             format = my_image.format
