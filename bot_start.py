@@ -8,6 +8,7 @@ from admin_cms import *
 
 from user_commands import *
 
+from test_commands import *
 
 client.start()
 client.run_until_disconnected()
