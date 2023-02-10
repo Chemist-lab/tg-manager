@@ -20,28 +20,36 @@ async def start_command(event):
 
 @client.on(events.CallbackQuery(data='get_photos'))
 async def user_get_image(event):
-    sender_id = event.sender_id
+    who = event.sender_id
+
+    if await check_user(who) == False:
+        await client.send_message(who,"У вас нет подписки")
+        await event.answer("У вас нет подписки")
+        return
+
     cur.execute("SELECT * FROM image_list")
     _data = cur.fetchall()
 
     _buttons = []
 
     if len(_data) == 0:
-        await client.send_message(sender_id,"В базе данных нет фото")
+        await client.send_message(who,"В базе данных нет фото")
         return
 
     for row in _data:
         if row[2] == 'True':
             name = row[1]
-            name_id = f"{name}_{sender_id}gi_usr_btn".encode("utf-8")
+            name_id = f"{name}_{who}gi_usr_btn".encode("utf-8")
             _buttons.append(Button.inline(name, bytes(name_id)))
 
     if len(_buttons) == 0:
         _buttons = await convert_1d_to_2d(_buttons, 3)
-        await client.edit_message(sender_id, event.message_id, "В базе данных нет доступных фото.")
+        msg = "В базе данных нет доступных фото."
+        await client.edit_message(who, event.message_id, msg)
+        await event.answer(msg)
         return
 
-    await client.edit_message(sender_id, event.message_id,"Выберите фото", buttons = _buttons)
+    await client.edit_message(who, event.message_id,"Выберите фото", buttons = _buttons)
 
 
 @client.on(events.CallbackQuery())

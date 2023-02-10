@@ -8,31 +8,6 @@ import os
 from pathlib import Path
 
 
-async def send_nudes(user_id, photo_name):
-    if await check_user(user_id) == False:
-        await client.send_message(user_id,"У вас нет подписки")
-        return
-
-    cur.execute("SELECT user_id, picture_name FROM bot_library WHERE user_id=? AND picture_name=?", (user_id, photo_name,))
-    _data=cur.fetchall()
-    if len(_data) == 0:
-        cur.execute("SELECT rowid, * FROM bot_library WHERE user_id='0' AND picture_name=?", (photo_name,))
-        _data=cur.fetchone()
-        rowid_ = _data[0]
-        cur.execute(f"UPDATE bot_library SET user_id='{user_id}' WHERE rowid='{rowid_}'")
-        con.commit()
-
-    cur.execute("SELECT picture_fullname FROM bot_library WHERE user_id=? AND picture_name=?", (user_id, photo_name))
-    _data=cur.fetchall()
-    picture_fullname = _data[0][0]
-    photopath = f"{SAVE_FOLDER}{photo_name}/"
-
-    for fn in Path(photopath).glob(f'{picture_fullname}.*'):
-        photopath = fn
-        print(fn)
-    await client.send_file(user_id, file=f'{photopath}', force_document=True)
-
-
 async def check_user(user_id):
     active_users = await client.get_participants(channel_id, aggressive=False, limit=2000)
     for i in active_users:
@@ -91,10 +66,15 @@ async def create_and_send_photo_with_watermark(user_id, image_name, msg_id, t_te
     if mode == 0:  
         cur.execute(f"INSERT INTO bot_library VALUES ({user_id}, '{image_name}', {msg_id}, {t_text})")
         con.commit()
-        print(f"Image {new_name} - saved. ")
+        print(f"Image '{new_name}' - saved. ")
 
     if mode == 1:  
         cur.execute(f"UPDATE bot_library SET picture_msg_id='{msg_id}' WHERE picture_name='{image_name}' AND user_id='{user_id}'")
         con.commit()
-        print(f"Image {new_name} - saved. ")
+        print(f"Image '{new_name}' - saved. ")
+    if mode == 3:
+        print(f"Test image '{new_name}' has been sended. ")
+        return
+    
+
     os.remove(send_path)

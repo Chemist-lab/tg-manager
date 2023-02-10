@@ -14,6 +14,7 @@ from telethon.tl.custom import Button
 from config import *
 from function import *
 from database_manager import *
+from user_function import create_and_send_photo_with_watermark
 
 
 #ADMIN CMS FSM
@@ -49,12 +50,13 @@ admin_state_memory = {}
 @client.on(events.NewMessage(pattern='/admin', chats=BOT_ADMIN_ID))
 async def admin_command(event):
     msg = """
-    /createphoto
-    /deletephoto
-    /editphoto
-    /pacsess
-    /getuserbyphoto
-    """
+/createphoto
+/deletephoto
+/editphoto
+/pacsess
+/getuserbyphoto
+/library
+"""
     await event.respond(msg)
 
 @client.on(events.NewMessage(pattern='/cancel', chats=BOT_ADMIN_ID))
@@ -87,14 +89,16 @@ async def admin_cms(event):
                 return
         
         admin_state_memory[f'image_new_name_{who}'] = event.text
-        msg = 'Хорошо! Ведите параметры расположения и цвета ватермарки.\n'
-        msg = msg + 'x y/hex/a/scale\n'
-        msg = msg + 'x, y - звдиг по пикселям от верхнего левого угла.\n'
-        msg = msg + 'hex - цвет в hex.\n'
-        msg = msg + 'a - прозрачность текста (0-100).\n'
-        msg = msg + 'scale - размер текста (0, 1, 2, ...).\n'
-        msg = msg + 'Пример: 100 20/00ff00/70/50\n'
-        
+        msg = """
+Хорошо! Ведите параметры расположения и цвета ватермарки.
+x y/hex/a/scale
+x, y - звдиг по пикселям от верхнего левого угла.
+hex - цвет в hex.
+a - прозрачность текста (0-100).
+scale - размер текста (0, 1, 2, ...).
+Пример: 100 20/00ff00/70/50
+"""
+
         await event.respond(msg)
         admin_state[who] = CreateDeletePhotoPackState.IMAGE_NEW_NAME
 
@@ -105,14 +109,16 @@ async def admin_cms(event):
         params =  event.text
 
         res = (await save_photo_to_lib(who, image_new_name, params, path))
+        await create_and_send_photo_with_watermark(user_id=who, image_name=image_new_name, msg_id=0, t_text='0', mode=3)
         msg = """
-        Изображение успешно добавлено!
+Изображение успешно добавлено!
 
-        Для того, чтобы отредактировать ватермарку напишите: /editphoto
+Для того, чтобы отредактировать ватермарку напишите: /editphoto
 
-        Для того, чтобы открыть доступ до изображения напишите: /pacsess
+Для того, чтобы открыть доступ до изображения напишите: /pacsess
         """
-        await client.send_message(who, "Изображение успешно добавлено")
+        await client.send_message(who, msg)
+        
         del admin_state[who]
         del admin_state_memory[f'inp_path_{who}']
         del admin_state_memory[f'image_new_name_{who}']
@@ -184,12 +190,6 @@ async def admin_cms(event):
         image_num = event.raw_text
         
         photo_name = admin_state_memory[f'get_image_name_state_{who}']
-        # photo_fullname = f"{photo_name}_{image_num}"
-        # photopath = f"{SAVE_FOLDER}{photo_name}/"
-        # for fn in Path(photopath).glob(f'{photo_fullname}.*'):
-        #     photopath = fn
-
-        # await client.send_file(who, file=f'{photopath}', force_document=True)
 
         cur.execute("SELECT user_id FROM bot_library WHERE picture_name=? AND picture_pos=?", (photo_name, image_num,))
         _data=cur.fetchall()
@@ -236,6 +236,7 @@ async def admin_cms(event):
         new_params = event.raw_text
         cur.execute(f"UPDATE image_list SET image_watermark_params='{new_params}' WHERE picture_name='{selected_image_name}'")
         con.commit()
+        await create_and_send_photo_with_watermark(user_id=who, image_name=selected_image_name, msg_id=0, t_text='0', mode=3)
         await client.send_message(who,f"Теперь новsе параметры для {selected_image_name}: {new_params}.")
         del admin_state[who]
 
@@ -348,11 +349,14 @@ async def admin_cms_callback(event):
         selected_image_name = ''
         if f'_i_yes_del_adm_btn' in edata_d:
             selected_image_name = edata_d.replace(f"_i_yes_del_adm_btn", '')
-            # photopath = f"{SAVE_FOLDER}{selected_image_name}"
-            # shutil.rmtree(photopath)
+            cur.execute("SELECT picture_path FROM image_list WHERE picture_name=?", (selected_image_name,))
+            _data = cur.fetchall()
+            path = _data[0][0]
+
             cur.execute("DELETE FROM image_list WHERE picture_name=?", (selected_image_name,))
             cur.execute("DELETE FROM bot_library WHERE picture_name=?", (selected_image_name,))
             con.commit()
+            os.remove(path)
             await client.send_message(who, f"Фото {selected_image_name} удалено.")
 
         elif f'_i_no_de_adm_btn' in edata_d:
@@ -397,8 +401,18 @@ async def edit_image_action(event):
             admin_state[who] = EditPhotoPackState.IMAGE_NEW_NAME
 
         elif '_EdiParamsAdmBtn' in edata_d:
+            msg = """
+Хорошо! Ведите параметры расположения и цвета ватермарки.
+x y/hex/a/scale
+x, y - звдиг по пикселям от верхнего левого угла.
+hex - цвет в hex.
+a - прозрачность текста (0-100).
+scale - размер текста (0, 1, 2, ...).
+Пример: 100 20/00ff00/70/50
+"""
             name = edata_d.replace(f"_EdiParamsAdmBtn", '')
             await client.send_message(who,f"Введите новые параметры ватермарки для {name}.")
+            await client.send_message(who,msg)
             admin_state_memory[f"{who}_nn"] = name
             admin_state[who] = EditPhotoPackState.IMAGE_WATERMARK_SETTINNG
 
@@ -436,76 +450,3 @@ async def admin_cms(event):
     await client.send_message(who,"Выберите изображение для редактирования:", buttons = _buttons)
 
     admin_state[who] = EditPhotoPackState.SELECT_IMAGE
-
-
-
-# Edit image
-
-# if mode == 2: #admin edit photo
-#         cur.execute(f"UPDATE image_list SET image_watermark_params='{msg_id}' WHERE picture_name='{image_name}' AND user_id='{user_id}'")
-#         con.commit()
-#         print(f"Image {new_name} - saved. ")
-
-
-
-
-
-
-# async def Create_PhotoPack(photo_dir, new_name, counts, params):
-#     params = params.split('/')
-#     t_pos = params[0].split(' ')
-#     t_hex = params[1].split(' ')
-#     t_hex = str(t_hex[0])
-
-#     t_opacity = int(params[2])
-#     t_scale = int(params[3])
-
-#     rgb = tuple(int(t_hex[i:i+2], 16) for i in (0, 2, 4))
-#     x = int(t_pos[0])
-#     y = int(t_pos[1])
-#     a = int((t_opacity*255)/100)
-
-#     try:
-#         title_font = ImageFont.truetype('fonts/PlayfairDisplay-Medium.ttf', t_scale)
-#         path = os.path.join(SAVE_FOLDER, new_name)
-#         try:
-#             os.mkdir(str(path)) 
-#         except OSError as error:
-#             if error == 'Cannot create a file when that file already exists:':
-#                 path = path  
-
-#         cur.execute("SELECT * FROM image_list WHERE picture_name=?", (new_name,))
-#         _data=cur.fetchall()
-#         if len(_data) != 0:
-#             return 2
-
-#         cur.execute(f"INSERT INTO image_list VALUES ('{new_name}', 'False')")
-#         con.commit()
-
-#         for i in range(0, int(counts)):
-#             userid = None
-#             full_name = f"{new_name}_{i}"
-#             userid = 0
-#             my_image = Image.open(photo_dir)
-#             my_image = my_image.convert("RGBA")
-#             title_text = i
-
-#             txt = Image.new("RGBA", my_image.size, (255, 255, 255, 0))
-#             d = ImageDraw.Draw(txt)
-#             d.text((x, y), str(title_text), font=title_font, fill=(rgb[0], rgb[1], rgb[2], a))
-
-#             my_image = Image.alpha_composite(my_image, txt).convert("RGB")
-
-#             my_image.save(f"{path}/{new_name}_{i}.png", "PNG")
-
-#             # my_image.save(f"{path}/{new_name}_{i}.{format}")
-#             my_image.close()
-
-#             cur.execute(f"INSERT INTO bot_library VALUES ({userid}, '{new_name}', {i}, '{full_name}')")
-#             con.commit()
-#             print(f"Image {full_name} - created. ")
-#         return 0
-
-#     except Exception as e:
-#         print(e)
-#         return 1
