@@ -37,7 +37,6 @@ class GetUserByPhonoNumberState(Enum):
     SELECT_IMAGE = auto()
     SELECT_NUMBER_ON_PICTURE = auto()
 
-
 class SetImageAccessState(Enum):
     SELECT_IMAGE = auto()
     SET_IMAGE_ACCESS = auto()
@@ -245,7 +244,7 @@ async def admin_cms(event):
 async def admin_cms(event):
     who = event.sender_id
     state = admin_state.get(who)
-
+    print(f'Admin state for {who}: {state}')
     if state is None:
         cur.execute("SELECT * FROM image_list")
         _data = cur.fetchall()
@@ -271,7 +270,7 @@ async def admin_cms_callback(event):
     who = event.sender_id
     # if who in BOT_ADMIN_ID:
     state = admin_state.get(who)
-
+    print(f'Admin state for {who}: {state}')
     #SELECT IMAGE TO VIEW USER
     if state == GetUserByPhonoNumberState.SELECT_IMAGE:
         edata_d = event.data.decode('utf-8')
@@ -380,15 +379,12 @@ async def admin_cms_callback(event):
         await client.send_message(who,f"Выберите дейстивие для {selected_image_name}.", buttons=button)
         
 
-
-# cur.execute(f"UPDATE image_list SET image_watermark_params='{msg_id}' WHERE picture_name='{image_name}' AND user_id='{user_id}'")
-#         con.commit()
 # SELECT IMAGE TO EDIT KEYBOARD QUERY
 @client.on(events.CallbackQuery(chats=BOT_ADMIN_ID))
 async def edit_image_action(event):
     who = event.sender_id
     state = admin_state.get(who)
-    
+    print(f'Admin state for {who}: {state}')
     if state == EditPhotoPackState.SELECT_OPTION:
         edata_d = event.data.decode('utf-8')
         print(edata_d)
@@ -405,27 +401,6 @@ async def edit_image_action(event):
             await client.send_message(who,f"Введите новые параметры ватермарки для {name}.")
             admin_state_memory[f"{who}_nn"] = name
             admin_state[who] = EditPhotoPackState.IMAGE_WATERMARK_SETTINNG
-            
-
-
-
-    # elif state == CreateDeletePhotoPackState.CONFIRM_DELETING_SELECTED_IMAGE:
-    #     edata_d = event.data.decode('utf-8')
-    #     selected_image_name = ''
-    #     if f'_i_yes_del_adm_btn' in edata_d:
-    #         selected_image_name = edata_d.replace(f"_i_yes_del_adm_btn", '')
-    #         # photopath = f"{SAVE_FOLDER}{selected_image_name}"
-    #         # shutil.rmtree(photopath)
-    #         cur.execute("DELETE FROM image_list WHERE picture_name=?", (selected_image_name,))
-    #         cur.execute("DELETE FROM bot_library WHERE picture_name=?", (selected_image_name,))
-    #         con.commit()
-    #         await client.send_message(who, f"Фото {selected_image_name} удалено.")
-
-    #     elif f'_i_no_de_adm_btn' in edata_d:
-    #         selected_image_name = edata_d.replace('_i_no_de_adm_btn','')
-    #         await client.send_message(who, f"Фото {selected_image_name} сохранено.")
-
-    #     del admin_state[who]
 
 
 
@@ -433,14 +408,19 @@ async def edit_image_action(event):
 async def admin_cancel_action(event):
     who = event.sender_id
     del admin_state[who]
+    print(f'Admin state for {who}: {admin_state[who]}')
 
 
 @client.on(events.NewMessage(pattern='/editphoto', chats=BOT_ADMIN_ID))
 async def admin_cms(event):
     who = event.sender_id
+    state = admin_state.get(who)
+    print(f'Admin state for {who}: {state}')
+
+
     cur.execute("SELECT * FROM image_list")
     _data = cur.fetchall()
-
+    
     _buttons = []
     if len(_data) == 0:
         await client.send_message(who,"В базе данных нет фото")
