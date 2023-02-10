@@ -27,9 +27,16 @@ class CreateDeletePhotoPackState(Enum):
     SELECT_IMAGE_TO_DELETE = auto()
     CONFIRM_DELETING_SELECTED_IMAGE = auto()
 
+class EditPhotoPackState(Enum):
+    SELECT_IMAGE = auto()
+    SELECT_OPTION = auto()
+    IMAGE_NEW_NAME = auto()
+    IMAGE_WATERMARK_SETTINNG = auto()
+
 class GetUserByPhonoNumberState(Enum):
     SELECT_IMAGE = auto()
     SELECT_NUMBER_ON_PICTURE = auto()
+
 
 class SetImageAccessState(Enum):
     SELECT_IMAGE = auto()
@@ -42,10 +49,13 @@ admin_state_memory = {}
 
 @client.on(events.NewMessage(pattern='/admin', chats=BOT_ADMIN_ID))
 async def admin_command(event):
-    msg = '/createphoto\n'
-    msg = msg + '/deletephoto\n' 
-    msg = msg + '/pacsess\n'
-    msg = msg + '/getuserbyphoto\n'
+    msg = """
+    /createphoto
+    /deletephoto
+    /editphoto
+    /pacsess
+    /getuserbyphoto
+    """
     await event.respond(msg)
 
 @client.on(events.NewMessage(pattern='/cancel', chats=BOT_ADMIN_ID))
@@ -96,6 +106,13 @@ async def admin_cms(event):
         params =  event.text
 
         res = (await save_photo_to_lib(who, image_new_name, params, path))
+        msg = """
+        Изображение успешно добавлено!
+
+        Для того, чтобы отредактировать ватермарку напишите: /editphoto
+
+        Для того, чтобы открыть доступ до изображения напишите: /pacsess
+        """
         await client.send_message(who, "Изображение успешно добавлено")
         del admin_state[who]
         del admin_state_memory[f'inp_path_{who}']
@@ -141,6 +158,8 @@ async def admin_cms(event):
 async def admin_cms(event):
     who = event.sender_id
     state = admin_state.get(who)
+    print(f'Admin state for {who}: {state}')
+
     if event.raw_text == '/getuserbyphoto':
         if state is None:
             cur.execute("SELECT * FROM image_list")
@@ -166,7 +185,7 @@ async def admin_cms(event):
         image_num = event.raw_text
         
         photo_name = admin_state_memory[f'get_image_name_state_{who}']
-        photo_fullname = f"{photo_name}_{image_num}"
+        # photo_fullname = f"{photo_name}_{image_num}"
         # photopath = f"{SAVE_FOLDER}{photo_name}/"
         # for fn in Path(photopath).glob(f'{photo_fullname}.*'):
         #     photopath = fn
@@ -202,6 +221,25 @@ async def admin_cms(event):
 
         del admin_state[who]
 
+#IMAGE EDITING
+    elif state == EditPhotoPackState.IMAGE_NEW_NAME:
+        selected_image_name = admin_state_memory[f"{who}_nn"]
+        new_name = event.raw_text
+        print(selected_image_name)
+        cur.execute(f"UPDATE image_list SET picture_name='{new_name}' WHERE picture_name='{selected_image_name}'")
+        con.commit()
+        await client.send_message(who,f"Теперь новое имя для {selected_image_name}: {new_name}.")
+        del admin_state[who]
+
+    elif state == EditPhotoPackState.IMAGE_WATERMARK_SETTINNG:
+        selected_image_name = admin_state_memory[f"{who}_nn"]
+        print(selected_image_name)
+        new_params = event.raw_text
+        cur.execute(f"UPDATE image_list SET image_watermark_params='{new_params}' WHERE picture_name='{selected_image_name}'")
+        con.commit()
+        await client.send_message(who,f"Теперь новsе параметры для {selected_image_name}: {new_params}.")
+        del admin_state[who]
+
 
 @client.on(events.NewMessage(pattern='/pacsess', chats=BOT_ADMIN_ID))
 async def admin_cms(event):
@@ -228,165 +266,266 @@ async def admin_cms(event):
 
 
 #ADMIN ID KEYBOARD
-@client.on(events.CallbackQuery())
+@client.on(events.CallbackQuery(chats=BOT_ADMIN_ID))
 async def admin_cms_callback(event):
     who = event.sender_id
-    if who in BOT_ADMIN_ID:
-        state = admin_state.get(who)
+    # if who in BOT_ADMIN_ID:
+    state = admin_state.get(who)
 
-        #SELECT IMAGE TO VIEW USER
-        if state == GetUserByPhonoNumberState.SELECT_IMAGE:
-            edata_d = event.data.decode('utf-8')
-            admin_state_memory[f'get_image_name_state_{who}'] = edata_d.replace("_get_user_by_image_admin_btn", '')
-            await client.send_message(who,f"Вы выбрали {admin_state_memory[f'get_image_name_state_{who}']}")
-            await client.send_message(who,"Введите число на фото.")
+    #SELECT IMAGE TO VIEW USER
+    if state == GetUserByPhonoNumberState.SELECT_IMAGE:
+        edata_d = event.data.decode('utf-8')
+        admin_state_memory[f'get_image_name_state_{who}'] = edata_d.replace("_get_user_by_image_admin_btn", '')
+        await client.send_message(who,f"Вы выбрали {admin_state_memory[f'get_image_name_state_{who}']}")
+        await client.send_message(who,"Введите число на фото.")
 
-            admin_state[who] = GetUserByPhonoNumberState.SELECT_NUMBER_ON_PICTURE
+        admin_state[who] = GetUserByPhonoNumberState.SELECT_NUMBER_ON_PICTURE
 
-        #SELECT IMAGE TO CHANGE ACCSESS
-        elif state == SetImageAccessState.SELECT_IMAGE:
-            edata_d = event.data.decode('utf-8')
+    #SELECT IMAGE TO CHANGE ACCSESS
+    elif state == SetImageAccessState.SELECT_IMAGE:
+        edata_d = event.data.decode('utf-8')
 
-            selected_image_name = edata_d.replace("_image_to_set_accsess_admin_btn", '')
-            cur.execute("SELECT picture_access FROM image_list WHERE picture_name=?", (selected_image_name,))
-            _data = cur.fetchall()
-            if len(_data) == 0:
-                await client.send_message(who,"В базе данных нет фото")
-                return
-            
-            button = []
-
-            btn_enable = f"{who}_{selected_image_name}_i_all_ac_admin_btn".encode("utf-8") 
-            btn_disable = f"{who}_{selected_image_name}_i_dis_ac_admin_btn".encode("utf-8") 
-            if _data[0][0] == 'True':
-                button.append(Button.inline("Закрыть доступ", bytes(btn_disable)))
-
-            elif _data[0][0] == 'False':
-                button.append(Button.inline("Открыть доступ", bytes(btn_enable)))
-
-            await client.send_message(who,f"Установите доступ для {selected_image_name}.", buttons=button)
-
-            admin_state[who] = SetImageAccessState.SET_IMAGE_ACCESS
+        selected_image_name = edata_d.replace("_image_to_set_accsess_admin_btn", '')
+        cur.execute("SELECT picture_access FROM image_list WHERE picture_name=?", (selected_image_name,))
+        _data = cur.fetchall()
+        if len(_data) == 0:
+            await client.send_message(who,"В базе данных нет фото")
+            return
         
-        elif state == SetImageAccessState.SET_IMAGE_ACCESS:
-            edata_d = event.data.decode('utf-8')
-            selected_image_name = ''
+        button = []
 
-            reply = ['Фото в открытом доступе', 'Фото в закрытом доступе']
-            msg = ''
-            access = ''
-            if ("_i_all_ac_admin_btn" in edata_d) and (str(who) in edata_d):
-                selected_image_name = edata_d.replace("_i_all_ac_admin_btn", '').replace(f"{who}_", '')
-                access = 'True'
-                msg = reply[0]
+        btn_enable = f"{who}_{selected_image_name}_i_all_ac_admin_btn".encode("utf-8") 
+        btn_disable = f"{who}_{selected_image_name}_i_dis_ac_admin_btn".encode("utf-8") 
+        if _data[0][0] == 'True':
+            button.append(Button.inline("Закрыть доступ", bytes(btn_disable)))
 
-            elif ("_i_dis_ac_admin_btn" in edata_d) and (str(who) in edata_d):
-                selected_image_name = edata_d.replace("_i_dis_ac_admin_btn", '').replace(f"{who}_", '')
-                access = 'False'
-                msg = reply[1]
-            cur.execute(f"UPDATE image_list SET picture_access='{access}' WHERE picture_name='{selected_image_name}'")
+        elif _data[0][0] == 'False':
+            button.append(Button.inline("Открыть доступ", bytes(btn_enable)))
+
+        await client.send_message(who,f"Установите доступ для {selected_image_name}.", buttons=button)
+
+        admin_state[who] = SetImageAccessState.SET_IMAGE_ACCESS
+    
+    elif state == SetImageAccessState.SET_IMAGE_ACCESS:
+        edata_d = event.data.decode('utf-8')
+        selected_image_name = ''
+
+        reply = ['Фото в открытом доступе', 'Фото в закрытом доступе']
+        msg = ''
+        access = ''
+        if ("_i_all_ac_admin_btn" in edata_d) and (str(who) in edata_d):
+            selected_image_name = edata_d.replace("_i_all_ac_admin_btn", '').replace(f"{who}_", '')
+            access = 'True'
+            msg = reply[0]
+
+        elif ("_i_dis_ac_admin_btn" in edata_d) and (str(who) in edata_d):
+            selected_image_name = edata_d.replace("_i_dis_ac_admin_btn", '').replace(f"{who}_", '')
+            access = 'False'
+            msg = reply[1]
+        cur.execute(f"UPDATE image_list SET picture_access='{access}' WHERE picture_name='{selected_image_name}'")
+        con.commit()
+
+        await client.send_message(who, msg)
+        del admin_state[who]
+    
+    # SELECT IMAGE TO DELETE
+    elif state == CreateDeletePhotoPackState.SELECT_IMAGE_TO_DELETE:
+        edata_d = event.data.decode('utf-8')
+        selected_image_name = edata_d.replace(f"_{who}_gi_del_a_b", '')
+
+        button = []
+        btn_confirm = f"{selected_image_name}_i_yes_del_adm_btn".encode("utf-8") 
+        btn_discard = f"{selected_image_name}_i_no_de_adm_btn".encode("utf-8")
+
+        button.append(Button.inline("Подтвердить удаление", bytes(btn_confirm)))
+        button.append(Button.inline("Отменить удаление", bytes(btn_discard)))
+
+        admin_state[who] = CreateDeletePhotoPackState.CONFIRM_DELETING_SELECTED_IMAGE
+        await client.send_message(who,f"Подтвердите или отклоние удаление {selected_image_name}.", buttons=button)
+
+
+    elif state == CreateDeletePhotoPackState.CONFIRM_DELETING_SELECTED_IMAGE:
+        edata_d = event.data.decode('utf-8')
+        selected_image_name = ''
+        if f'_i_yes_del_adm_btn' in edata_d:
+            selected_image_name = edata_d.replace(f"_i_yes_del_adm_btn", '')
+            # photopath = f"{SAVE_FOLDER}{selected_image_name}"
+            # shutil.rmtree(photopath)
+            cur.execute("DELETE FROM image_list WHERE picture_name=?", (selected_image_name,))
+            cur.execute("DELETE FROM bot_library WHERE picture_name=?", (selected_image_name,))
             con.commit()
+            await client.send_message(who, f"Фото {selected_image_name} удалено.")
 
-            await client.send_message(who, msg)
-            del admin_state[who]
+        elif f'_i_no_de_adm_btn' in edata_d:
+            selected_image_name = edata_d.replace('_i_no_de_adm_btn','')
+            await client.send_message(who, f"Фото {selected_image_name} сохранено.")
+
+        del admin_state[who]
+
+    
+
+    # SELECT IMAGE TO EDIT
+    elif state == EditPhotoPackState.SELECT_IMAGE:
+        edata_d = event.data.decode('utf-8')
+        selected_image_name = edata_d.replace(f"_{who}_gi_edi_a_b", '')
+
+        button = []
+        btn_name = f"{selected_image_name}_EdiNameAdmBtn".encode("utf-8") 
+        btn_params = f"{selected_image_name}_EdiParamsAdmBtn".encode("utf-8")
+
+        button.append(Button.inline("Изменить имя изображения", bytes(btn_name)))
+        button.append(Button.inline("Изменить параметры ватермарки на изображении", bytes(btn_params)))
+
+        admin_state[who] = EditPhotoPackState.SELECT_OPTION
+        await client.send_message(who,f"Выберите дейстивие для {selected_image_name}.", buttons=button)
         
-        # SELECT IMAGE TO DELETE
-        elif state == CreateDeletePhotoPackState.SELECT_IMAGE_TO_DELETE:
-            edata_d = event.data.decode('utf-8')
-            selected_image_name = edata_d.replace(f"_{who}_gi_del_a_b", '')
-
-            button = []
-            btn_confirm = f"{selected_image_name}_i_yes_del_adm_btn".encode("utf-8") 
-            btn_discard = f"{selected_image_name}_i_no_de_adm_btn".encode("utf-8")
-
-            button.append(Button.inline("Подтвердить удаление", bytes(btn_confirm)))
-            button.append(Button.inline("Отменить удаление", bytes(btn_discard)))
-
-            admin_state[who] = CreateDeletePhotoPackState.CONFIRM_DELETING_SELECTED_IMAGE
-            await client.send_message(who,f"Подтвердите или отклоние удаление {selected_image_name}.", buttons=button)
 
 
-        elif state == CreateDeletePhotoPackState.CONFIRM_DELETING_SELECTED_IMAGE:
-            edata_d = event.data.decode('utf-8')
-            selected_image_name = ''
-            if f'_i_yes_del_adm_btn' in edata_d:
-                selected_image_name = edata_d.replace(f"_i_yes_del_adm_btn", '')
-                # photopath = f"{SAVE_FOLDER}{selected_image_name}"
-                # shutil.rmtree(photopath)
-                cur.execute("DELETE FROM image_list WHERE picture_name=?", (selected_image_name,))
-                cur.execute("DELETE FROM bot_library WHERE picture_name=?", (selected_image_name,))
-                con.commit()
-                await client.send_message(who, f"Фото {selected_image_name} удалено.")
+# cur.execute(f"UPDATE image_list SET image_watermark_params='{msg_id}' WHERE picture_name='{image_name}' AND user_id='{user_id}'")
+#         con.commit()
+# SELECT IMAGE TO EDIT KEYBOARD QUERY
+@client.on(events.CallbackQuery(chats=BOT_ADMIN_ID))
+async def edit_image_action(event):
+    who = event.sender_id
+    state = admin_state.get(who)
+    
+    if state == EditPhotoPackState.SELECT_OPTION:
+        edata_d = event.data.decode('utf-8')
+        print(edata_d)
+        if '_EdiNameAdmBtn' in edata_d:
+            print('_EdiNameAdmBtn')
+            name = edata_d.replace(f"_EdiNameAdmBtn", '')
+            await client.send_message(who,f"Введите новое имя {name}.")
+            admin_state_memory[f"{who}_nn"] = name
+            print(admin_state_memory[f"{who}_nn"])
+            admin_state[who] = EditPhotoPackState.IMAGE_NEW_NAME
 
-            elif f'_i_no_de_adm_btn' in edata_d:
-                selected_image_name = edata_d.replace('_i_no_de_adm_btn','')
-                await client.send_message(who, f"Фото {selected_image_name} сохранено.")
+        elif '_EdiParamsAdmBtn' in edata_d:
+            name = edata_d.replace(f"_EdiParamsAdmBtn", '')
+            await client.send_message(who,f"Введите новые параметры ватермарки для {name}.")
+            admin_state_memory[f"{who}_nn"] = name
+            admin_state[who] = EditPhotoPackState.IMAGE_WATERMARK_SETTINNG
+            
 
-            del admin_state[who]
+
+
+    # elif state == CreateDeletePhotoPackState.CONFIRM_DELETING_SELECTED_IMAGE:
+    #     edata_d = event.data.decode('utf-8')
+    #     selected_image_name = ''
+    #     if f'_i_yes_del_adm_btn' in edata_d:
+    #         selected_image_name = edata_d.replace(f"_i_yes_del_adm_btn", '')
+    #         # photopath = f"{SAVE_FOLDER}{selected_image_name}"
+    #         # shutil.rmtree(photopath)
+    #         cur.execute("DELETE FROM image_list WHERE picture_name=?", (selected_image_name,))
+    #         cur.execute("DELETE FROM bot_library WHERE picture_name=?", (selected_image_name,))
+    #         con.commit()
+    #         await client.send_message(who, f"Фото {selected_image_name} удалено.")
+
+    #     elif f'_i_no_de_adm_btn' in edata_d:
+    #         selected_image_name = edata_d.replace('_i_no_de_adm_btn','')
+    #         await client.send_message(who, f"Фото {selected_image_name} сохранено.")
+
+    #     del admin_state[who]
+
+
 
 @client.on(events.CallbackQuery(data='admin_cancel_action'))
 async def admin_cancel_action(event):
     who = event.sender_id
     del admin_state[who]
 
-async def Create_PhotoPack(photo_dir, new_name, counts, params):
-    params = params.split('/')
-    t_pos = params[0].split(' ')
-    t_hex = params[1].split(' ')
-    t_hex = str(t_hex[0])
 
-    t_opacity = int(params[2])
-    t_scale = int(params[3])
+@client.on(events.NewMessage(pattern='/editphoto', chats=BOT_ADMIN_ID))
+async def admin_cms(event):
+    who = event.sender_id
+    cur.execute("SELECT * FROM image_list")
+    _data = cur.fetchall()
 
-    rgb = tuple(int(t_hex[i:i+2], 16) for i in (0, 2, 4))
+    _buttons = []
+    if len(_data) == 0:
+        await client.send_message(who,"В базе данных нет фото")
+        return
 
-    x = int(t_pos[0])
-    y = int(t_pos[1])
+    for row in _data:
+        name = row[1]
+        name_id = f"{name}_{who}_gi_edi_a_b".encode("utf-8")
+        _buttons.append(Button.inline(name, bytes(name_id)))
 
-    a = int((t_opacity*255)/100)
-    try:
-        title_font = ImageFont.truetype('fonts/PlayfairDisplay-Medium.ttf', t_scale)
-        path = os.path.join(SAVE_FOLDER, new_name)
-        try:
-            os.mkdir(str(path)) 
-        except OSError as error:
-            if error == 'Cannot create a file when that file already exists:':
-                path = path
-        
+    _buttons = await convert_1d_to_2d(_buttons, 2)
 
-        cur.execute("SELECT * FROM image_list WHERE picture_name=?", (new_name,))
-        _data=cur.fetchall()
-        if len(_data) != 0:
-            return 2
+    await client.send_message(who,"Выберите изображение для редактирования:", buttons = _buttons)
 
-        cur.execute(f"INSERT INTO image_list VALUES ('{new_name}', 'False')")
-        con.commit()
+    admin_state[who] = EditPhotoPackState.SELECT_IMAGE
 
-        for i in range(0, int(counts)):
-            userid = None
-            full_name = f"{new_name}_{i}"
-            userid = 0
-            my_image = Image.open(photo_dir)
-            format = my_image.format
-            my_image = my_image.convert("RGBA")
-            title_text = i
 
-            txt = Image.new("RGBA", my_image.size, (255, 255, 255, 0))
-            d = ImageDraw.Draw(txt)
-            d.text((x, y), str(title_text), font=title_font, fill=(rgb[0], rgb[1], rgb[2], a))
 
-            my_image = Image.alpha_composite(my_image, txt).convert("RGB")
+# Edit image
 
-            my_image.save(f"{path}/{new_name}_{i}.png", "PNG")
+# if mode == 2: #admin edit photo
+#         cur.execute(f"UPDATE image_list SET image_watermark_params='{msg_id}' WHERE picture_name='{image_name}' AND user_id='{user_id}'")
+#         con.commit()
+#         print(f"Image {new_name} - saved. ")
 
-            # my_image.save(f"{path}/{new_name}_{i}.{format}")
-            my_image.close()
 
-            cur.execute(f"INSERT INTO bot_library VALUES ({userid}, '{new_name}', {i}, '{full_name}')")
-            con.commit()
-            print(f"Image {full_name} - created. ")
-        return 0
 
-    except Exception as e:
-        print(e)
-        return 1
+
+
+
+# async def Create_PhotoPack(photo_dir, new_name, counts, params):
+#     params = params.split('/')
+#     t_pos = params[0].split(' ')
+#     t_hex = params[1].split(' ')
+#     t_hex = str(t_hex[0])
+
+#     t_opacity = int(params[2])
+#     t_scale = int(params[3])
+
+#     rgb = tuple(int(t_hex[i:i+2], 16) for i in (0, 2, 4))
+#     x = int(t_pos[0])
+#     y = int(t_pos[1])
+#     a = int((t_opacity*255)/100)
+
+#     try:
+#         title_font = ImageFont.truetype('fonts/PlayfairDisplay-Medium.ttf', t_scale)
+#         path = os.path.join(SAVE_FOLDER, new_name)
+#         try:
+#             os.mkdir(str(path)) 
+#         except OSError as error:
+#             if error == 'Cannot create a file when that file already exists:':
+#                 path = path  
+
+#         cur.execute("SELECT * FROM image_list WHERE picture_name=?", (new_name,))
+#         _data=cur.fetchall()
+#         if len(_data) != 0:
+#             return 2
+
+#         cur.execute(f"INSERT INTO image_list VALUES ('{new_name}', 'False')")
+#         con.commit()
+
+#         for i in range(0, int(counts)):
+#             userid = None
+#             full_name = f"{new_name}_{i}"
+#             userid = 0
+#             my_image = Image.open(photo_dir)
+#             my_image = my_image.convert("RGBA")
+#             title_text = i
+
+#             txt = Image.new("RGBA", my_image.size, (255, 255, 255, 0))
+#             d = ImageDraw.Draw(txt)
+#             d.text((x, y), str(title_text), font=title_font, fill=(rgb[0], rgb[1], rgb[2], a))
+
+#             my_image = Image.alpha_composite(my_image, txt).convert("RGB")
+
+#             my_image.save(f"{path}/{new_name}_{i}.png", "PNG")
+
+#             # my_image.save(f"{path}/{new_name}_{i}.{format}")
+#             my_image.close()
+
+#             cur.execute(f"INSERT INTO bot_library VALUES ({userid}, '{new_name}', {i}, '{full_name}')")
+#             con.commit()
+#             print(f"Image {full_name} - created. ")
+#         return 0
+
+#     except Exception as e:
+#         print(e)
+#         return 1

@@ -46,42 +46,35 @@ async def user_get_image(event):
 
 @client.on(events.CallbackQuery())
 async def user_image_callback(event):
-    # sender_id = event.sender_id
     who = event.sender_id
-
-    
-
     edata_d = event.data.decode('utf-8')
-    _picture_name = ''
-    if f'_{who}gi_usr_btn' in edata_d:
-        _picture_name = edata_d.replace(f"_{who}gi_usr_btn", '')
-        
-
-    cur.execute("SELECT * FROM user_list WHERE user_id=?", (who,))
-    _data=cur.fetchall()
-    print(_data)
-    if _data[0][1] == 'False': 
-        return "User not allowed"
-
-
-    cur.execute("SELECT * FROM bot_library WHERE user_id=? AND picture_name=?", (who, _picture_name,))
-    _data=cur.fetchall()
-
-    if len(_data) == 0:
-        print('Image for user is not created')
-        cur.execute("SELECT * FROM bot_library WHERE picture_name=?", (_picture_name,))
-        msg_data=cur.fetchall()
-        picid = len(msg_data) + 1
-        msg_id = event.message_id + 1
-        await client.edit_message(who, event.message_id,"Изображение загружается", buttons = None)
-        await create_and_send_photo_with_watermark(who, _picture_name, msg_id, picid, 0)
-        return
     
+    if f'_{who}gi_usr_btn' in edata_d:
+        _picture_name = edata_d.replace(f"_{who}gi_usr_btn", '')  
+
+        cur.execute("SELECT * FROM user_list WHERE user_id=?", (who,))
+        _data=cur.fetchall()
+        print(_data)
+        if _data[0][1] == 'False': 
+            return "User not allowed"
 
 
-    msg_id = event.message_id + 1
-    picid = _data[0][3]
-    await create_and_send_photo_with_watermark(who, _picture_name, msg_id, picid, 1)
+        cur.execute("SELECT * FROM bot_library WHERE user_id=? AND picture_name=?", (who, _picture_name,))
+        _data=cur.fetchall()
+
+        if len(_data) == 0:
+            print('Image for user is not created')
+            cur.execute("SELECT * FROM bot_library WHERE picture_name=?", (_picture_name,))
+            msg_data=cur.fetchall()
+            picid = len(msg_data) + 1
+            msg_id = event.message_id + 1
+            await create_and_send_photo_with_watermark(who, _picture_name, msg_id, picid, 0)
+            # await client.edit_message(who, event.message_id,"Изображение загружается", buttons = None)
+            return
+
+        msg_id = event.message_id + 1
+        picid = _data[0][3]
+        await create_and_send_photo_with_watermark(who, _picture_name, msg_id, picid, 1)
     # try:
     #     msgid = _data[0][2]
     #     await client.forward_messages(who, msgid, from_peer=who)

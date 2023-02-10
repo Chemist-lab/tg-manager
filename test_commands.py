@@ -69,7 +69,7 @@ async def admin_cms(event):
         params =  event.text
 
         res = (await save_photo_to_lib(who, image_new_name, params, path))
-        await client.send_message(who, "Изображение успешно добавлено")
+
         del test_admin_state[who]
         del test_admin_state_memory[f'inp_path_{who}']
         del test_admin_state_memory[f'image_new_name_{who}']
@@ -87,91 +87,126 @@ async def save_photo_to_lib(_user_id, _picture_name, _params, _image_path):
 
 
 
-# @client.on(events.NewMessage(pattern='/testsend'))
-# async def admin_command(event):
-#     _picture_name = 'legs'
-    
+
+# @client.on(events.NewMessage(pattern='/deletephoto', chats=BOT_ADMIN_ID))
+# async def admin_cms(event):
 #     who = event.sender_id
+#     cur.execute("SELECT * FROM image_list")
+#     _data = cur.fetchall()
 
-#     cur.execute("SELECT * FROM user_list WHERE user_id=?", (who,))
-#     _data=cur.fetchall()
-#     print(_data)
-#     if _data[0][1] == 'False': 
-#         return "User not allowed"
-
-
-#     cur.execute("SELECT * FROM bot_library WHERE user_id=? AND picture_name=?", (who, _picture_name,))
-#     _data=cur.fetchall()
-
+#     _buttons = []
 #     if len(_data) == 0:
-#         print('Image for user is not created')
-#         cur.execute("SELECT * FROM bot_library WHERE picture_name=?", (_picture_name,))
-#         msg_data=cur.fetchall()
-#         picid = len(msg_data) + 1
-#         msg_id = event.id + 1
-#         await create_and_send_photo_with_watermark(who, _picture_name, msg_id, picid, 0)
+#         await client.send_message(who,"В базе данных нет фото")
 #         return
 
-#     try:
-#         msgid = _data[0][2]
-#         await client.forward_messages(who, msgid, from_peer=who)
-#     except:
-#         msg_id = event.id + 1
-#         picid = _data[0][3]
-#         await create_and_send_photo_with_watermark(who, _picture_name, msg_id, picid, 1)
+#     for row in _data:
+#         name = row[0]
+#         name_id = f"{name}_{who}_gi_del_a_b".encode("utf-8")
+#         _buttons.append(Button.inline(name, bytes(name_id)))
 
-# async def create_and_send_photo_with_watermark(user_id, image_name, msg_id, t_text, mode):
-#     print('Creating new image')
-#     cur.execute("SELECT * FROM image_list WHERE picture_name=?", (image_name,))
-#     _data=cur.fetchall()
-#     if len(_data) == 0:
-#         return f"There's not image with name {image_name}"
-#     print(_data)
-#     params = _data[0][3]
-#     params = params.split('/')
-#     t_pos = params[0].split(' ')
-#     t_hex = params[1].split(' ')
-#     t_hex = str(t_hex[0])
-#     t_opacity = int(params[2])
-#     t_scale = int(params[3])
+#     _buttons = await convert_1d_to_2d(_buttons, 2)
 
-#     rgb = tuple(int(t_hex[i:i+2], 16) for i in (0, 2, 4))
-#     x = int(t_pos[0])
-#     y = int(t_pos[1])
-#     a = int((t_opacity*255)/100)
+#     await client.send_message(who,"Выберите фото пак для удаления:", buttons = _buttons)
+
+#     test_admin_state[who] = TestCreateDeletePhotoPackState.SELECT_IMAGE_TO_DELETE
+
+# , chats=BOT_ADMIN_ID
+@client.on(events.NewMessage(pattern='/testsend'))
+async def admin_command(event):
+    who = event.sender_id
+    _picture_name = 'legs'
+    cur.execute("SELECT * FROM user_list WHERE user_id=?", (who,))
+    _data=cur.fetchall()
+    print(_data)
+    if _data[0][1] == 'False': 
+        return "User not allowed"
 
 
-#     title_font = ImageFont.truetype('fonts/PlayfairDisplay-Medium.ttf', t_scale)
+    cur.execute("SELECT * FROM bot_library WHERE user_id=? AND picture_name=?", (who, _picture_name,))
+    _data=cur.fetchall()
 
-#     inp_photo_dir = os.path.join(TG_SAVE_PATH, 'test.png')
-#     my_image = Image.open(inp_photo_dir)
-#     format = my_image.format
-#     my_image = my_image.convert("RGBA")
+    cur.execute("SELECT * FROM bot_library WHERE picture_name=?", (_picture_name,))
+    msg_data=cur.fetchall()
 
-#     new_name = random.randint(26571, 26457454)
 
-#     txt = Image.new("RGBA", my_image.size, (255, 255, 255, 0))
-#     d = ImageDraw.Draw(txt)
-#     d.text((x, y), str(t_text), font=title_font, fill=(rgb[0], rgb[1], rgb[2], a))
+    if len(_data) == 0:
+        print('Image for user is not created')
+        msg_id = event.id + 1
+        await create_and_send_photo_with_watermark(who, _picture_name, msg_id)
+        return
 
-#     my_image = Image.alpha_composite(my_image, txt).convert("RGB")
+    
+    try:
+        msgid = _data[0][2]
+        await client.forward_messages(who, msgid, from_peer=who)
+    except:
+        msg_data
+    
 
-#     send_path = f"{SAVE_FOLDER}{new_name}.png"
-#     print(send_path)
-#     my_image.save(send_path, "PNG")
 
-#     my_image.close()
-#     await client.send_file(user_id, file=send_path, force_document=True)
 
-#     t_text = int(t_text)
+# async def send_photo_with_watermark(user_id, image_name, params):
+#     await client.forward_messages(user_id, file='sad', force_document=True)
+        
 
-#     if mode == 0:  
-#         cur.execute(f"INSERT INTO bot_library VALUES ({user_id}, '{image_name}', {msg_id}, {t_text})")
-#         con.commit()
-#         print(f"Image {new_name} - saved. ")
+async def create_and_send_photo_with_watermark(user_id, image_name, msg_id, t_text):
+    print('Creating new image')
+    cur.execute("SELECT * FROM image_list WHERE picture_name=?", (image_name,))
+    _data=cur.fetchall()
+    if len(_data) == 0:
+        return f"There's not image with name {image_name}"
+    print(_data)
 
-#     if mode == 1:  
-#         cur.execute(f"UPDATE bot_library SET picture_msg_id='{msg_id}' WHERE picture_name='{image_name}' AND user_id='{user_id}'")
-#         con.commit()
-#         print(f"Image {new_name} - saved. ")
-#     os.remove(send_path)
+    params = _data[0][3]
+    print(params)
+
+    params = params.split('/')
+    t_pos = params[0].split(' ')
+    t_hex = params[1].split(' ')
+    t_hex = str(t_hex[0])
+
+    t_opacity = int(params[2])
+    t_scale = int(params[3])
+
+    rgb = tuple(int(t_hex[i:i+2], 16) for i in (0, 2, 4))
+
+    x = int(t_pos[0])
+    y = int(t_pos[1])
+
+    a = int((t_opacity*255)/100)
+    title_font = ImageFont.truetype('fonts/PlayfairDisplay-Medium.ttf', t_scale)
+    inp_photo_dir = os.path.join(TG_SAVE_PATH, 'test.png')
+    my_image = Image.open(inp_photo_dir)
+
+    format = my_image.format
+
+    my_image = my_image.convert("RGBA")
+    
+
+    new_name = random.randint(26571, 26457454)
+
+
+    # cur.execute("SELECT * FROM bot_library WHERE picture_name=?", (image_name,))
+    # _data=cur.fetchall()
+    # i = len(_data) + 1
+    # title_text = str(i)
+
+    txt = Image.new("RGBA", my_image.size, (255, 255, 255, 0))
+    d = ImageDraw.Draw(txt)
+    d.text((x, y), str(t_text), font=title_font, fill=(rgb[0], rgb[1], rgb[2], a))
+
+    my_image = Image.alpha_composite(my_image, txt).convert("RGB")
+
+    send_path = f"{SAVE_FOLDER}{new_name}.png"
+    print(send_path)
+    my_image.save(send_path, "PNG")
+
+    my_image.close()
+    await client.send_file(user_id, file=send_path, force_document=True)
+
+    t_text = int(t_text)
+
+    cur.execute(f"INSERT INTO bot_library VALUES ({user_id}, '{image_name}', {msg_id}, {t_text})")
+    con.commit()
+    print(f"Image {new_name} - saved. ")
+    os.remove(send_path)
