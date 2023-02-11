@@ -78,3 +78,6 @@ async def create_and_send_photo_with_watermark(user_id, image_name, msg_id, t_te
     
 
     os.remove(send_path)
+
+
+# optimize=True
