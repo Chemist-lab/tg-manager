@@ -1,3 +1,5 @@
+BOT_VERSION = 1.0
+
 api_id = 23465764
 
 api_hash = 'b0d09e5fdddd42e50eb821496550eb4c'
