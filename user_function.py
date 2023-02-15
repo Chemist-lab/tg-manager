@@ -8,17 +8,26 @@ import os
 from pathlib import Path
 
 from telethon import functions
+import json
+import requests
 
 async def check_user(user_id):
     # user_id = str(user_id)
     # ent = await client.get_entity(user_id)
     # print(str(ent))
-    active_users = client.iter_participants(channel_id, aggressive=True, limit=3000)
-    print(active_users)
-    async for i in active_users:
-        print(i)
-        if int(user_id) == int(i.id):
-            return True
+    data = {"chat_id": channel_id,"user_id": user_id } # Cюди пхаєш ід чату і юзера 
+    HTTPHeaders = {"Content-Type": "application/json"}
+    MesRequest = requests.get("https://api.telegram.org/bot" + bot_token + "/getChatMember", data=json.dumps(data),headers=HTTPHeaders).json()
+    print(str(MesRequest))
+    if ("'status': 'member'" in str(MesRequest)) or ("'status': 'administrator'" in str(MesRequest)):
+        return True
+    
+    # active_users = client.iter_participants(channel_id, aggressive=True, limit=3000)
+    # print(active_users)
+    # async for i in active_users:
+    #     # print(i)
+    #     if int(user_id) == int(i.id):
+    #         return True
     else: return False
 
 
