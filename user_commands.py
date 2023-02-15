@@ -13,6 +13,7 @@ async def start_command(event):
     if len(_data) == 0:
         cur.execute(f"INSERT INTO user_list VALUES ({sender_id}, 'True')")
         con.commit()
+        print("NONO")
     buttons = []
     buttons.append(Button.inline('Получить фото', 'get_photos'))
     await client.send_message(event.sender_id, 'Привет! Я могу выдать тебе 4к картинки из канала legionCumMander. Для того, чтобы начать нажми "start"', buttons=buttons)

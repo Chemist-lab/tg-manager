@@ -7,14 +7,20 @@ import os
 
 from pathlib import Path
 
+from telethon import functions
 
 async def check_user(user_id):
-    active_users = await client.get_participants(channel_id, aggressive=False, limit=2000)
-    for i in active_users:
+    # user_id = str(user_id)
+    # ent = await client.get_entity(user_id)
+    # print(str(ent))
+    active_users = client.iter_participants(channel_id, aggressive=True, limit=3000)
+    print(active_users)
+    async for i in active_users:
+        print(i)
         if int(user_id) == int(i.id):
             return True
-        
     else: return False
+
 
 
 
@@ -56,8 +62,8 @@ async def create_and_send_photo_with_watermark(user_id, image_name, msg_id, t_te
 
     send_path = f"{SAVE_FOLDER}{new_name}.png"
     print(send_path)
-    my_image.save(send_path, "PNG")
-
+    # my_image.quantize(colors=1024, method=Image.MAXCOVERAGE)
+    my_image.save(send_path) #"PNG",
     my_image.close()
     await client.send_file(user_id, file=send_path, force_document=True)
 
