@@ -53,6 +53,21 @@ async def create_and_send_photo_with_watermark(user_id, image_name, msg_id, t_te
     y = int(t_pos[1])
     a = int((t_opacity*255)/100)
 
+    t_text = int(t_text)
+
+    if mode == 0:  
+        cur.execute(f"INSERT INTO bot_library VALUES ({user_id}, '{image_name}', {msg_id}, {t_text})")
+        con.commit()
+        print(f"Image '{new_name}' - saved. ")
+
+    if mode == 1:  
+        cur.execute(f"UPDATE bot_library SET picture_msg_id='{msg_id}' WHERE picture_name='{image_name}' AND user_id='{user_id}'")
+        con.commit()
+        print(f"Image '{new_name}' - saved. ")
+    if mode == 3:
+        print(f"Test image '{new_name}' has been sended. ")
+        return
+
 
     title_font = ImageFont.truetype('fonts/PlayfairDisplay-Medium.ttf', t_scale)
     print(_data[0][4])
@@ -76,20 +91,7 @@ async def create_and_send_photo_with_watermark(user_id, image_name, msg_id, t_te
     my_image.close()
     await client.send_file(user_id, file=send_path, force_document=True)
 
-    t_text = int(t_text)
-
-    if mode == 0:  
-        cur.execute(f"INSERT INTO bot_library VALUES ({user_id}, '{image_name}', {msg_id}, {t_text})")
-        con.commit()
-        print(f"Image '{new_name}' - saved. ")
-
-    if mode == 1:  
-        cur.execute(f"UPDATE bot_library SET picture_msg_id='{msg_id}' WHERE picture_name='{image_name}' AND user_id='{user_id}'")
-        con.commit()
-        print(f"Image '{new_name}' - saved. ")
-    if mode == 3:
-        print(f"Test image '{new_name}' has been sended. ")
-        return
+    
     
 
     os.remove(send_path)
