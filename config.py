@@ -2,9 +2,9 @@ api_id = 23465764
 
 api_hash = 'b0d09e5fdddd42e50eb821496550eb4c'
 
-bot_token = '5954105293:AAGyBr1KALNvWI77gil4jQAFk_BfvaFWfhA'
+bot_token = '5912714019:AAH83PHq51gt2bA6AuYzO7VjjFhRggLGEXo'
 
-channel_id = -1001802630395
+channel_id = -1001879454560
                  
 BOT_ADMIN_ID = [657110596, 406974309]
 # 657110596

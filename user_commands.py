@@ -67,7 +67,7 @@ async def user_image_callback(event):
         if _data[0][1] == 'False': 
             return "User not allowed"
 
-
+        print(f"Request for image: {_picture_name} , by {who}")
         cur.execute("SELECT * FROM bot_library WHERE user_id=? AND picture_name=?", (who, _picture_name,))
         _data=cur.fetchall()
 
