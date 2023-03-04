@@ -282,7 +282,7 @@ async def admin_cms_callback(event):
 
         admin_state[who] = GetUserByPhonoNumberState.SELECT_NUMBER_ON_PICTURE
 
-    #SELECT IMAGE TO CHANGE ACCSESS
+    #SELECT IMAGE TO CHANGE ACCSESS  
     elif state == SetImageAccessState.SELECT_IMAGE:
         edata_d = event.data.decode('utf-8')
 
