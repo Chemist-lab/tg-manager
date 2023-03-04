@@ -22,35 +22,43 @@ async def start_command(event):
 @client.on(events.CallbackQuery(data='get_photos'))
 async def user_get_image(event):
     who = event.sender_id
+    
+    _buttons = []
 
     if await check_user(who) == False:
         await client.send_message(who,"У вас нет подписки")
         await event.answer("У вас нет подписки")
         return
 
-    cur.execute("SELECT * FROM image_list")
+    cur.execute("SELECT * FROM image_list ORDER BY picture_name ASC")
     _data = cur.fetchall()
-
-    _buttons = []
-
     if len(_data) == 0:
         await client.send_message(who,"В базе данных нет фото")
         return
 
+
+    # if len(_buttons) == 0:
+    #         msg = "В базе данных нет доступных фото."
+    #         await client.edit_message(who, event.message_id, msg)
+    #         await event.answer(msg)
+    #         return
+                
+    
     for row in _data:
         if row[2] == 'True':
             name = row[1]
             name_id = f"{name}_{who}gi_usr_btn".encode("utf-8")
             _buttons.append(Button.inline(name, bytes(name_id)))
+    _buttons = await convert_1d_to_2d(_buttons, 1)
+    print(_buttons)
+    nav = [ Button.inline('<<', b"usr_mov_<<"),
+           Button.inline('>>', b"usr_mov_>>")
 
-    if len(_buttons) == 0:
-        _buttons = await convert_1d_to_2d(_buttons, 3)
-        msg = "В базе данных нет доступных фото."
-        await client.edit_message(who, event.message_id, msg)
-        await event.answer(msg)
-        return
-
-    await client.edit_message(who, event.message_id,"Выберите фото", buttons = _buttons)
+    ]
+    _buttons.append(nav)
+    # _buttons.append()
+    
+    await client.edit_message(who, event.message_id, "Выберите фото", buttons = _buttons)
 
 
 @client.on(events.CallbackQuery())

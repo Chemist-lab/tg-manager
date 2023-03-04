@@ -30,3 +30,4 @@ from telethon.tl.functions.channels import GetFullChannelRequest
 
 client.start()
 client.run_until_disconnected()
+

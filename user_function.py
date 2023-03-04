@@ -19,7 +19,7 @@ async def check_user(user_id):
     HTTPHeaders = {"Content-Type": "application/json"}
     MesRequest = requests.get("https://api.telegram.org/bot" + bot_token + "/getChatMember", data=json.dumps(data),headers=HTTPHeaders).json()
     print(str(MesRequest))
-    if ("'status': 'member'" in str(MesRequest)) or ("'status': 'administrator'" in str(MesRequest)):
+    if ("'status': 'member'" in str(MesRequest)) or ("'status': 'administrator'" in str(MesRequest)) or ("'status': 'creator'" in str(MesRequest)):
         return True
     
     # active_users = client.iter_participants(channel_id, aggressive=True, limit=3000)
