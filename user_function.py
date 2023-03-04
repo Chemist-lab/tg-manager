@@ -34,28 +34,33 @@ async def check_user(user_id):
 
 
 async def create_and_send_photo_with_watermark(user_id, image_name, msg_id, t_text, mode):
+    new_name = random.randint(26571, 26457454)
+
     print('Creating new image')
     cur.execute("SELECT * FROM image_list WHERE picture_name=?", (image_name,))
     _data=cur.fetchall()
     if len(_data) == 0:
         return f"There's not image with name {image_name}"
     print(_data)
-    params = _data[0][3]
-    params = params.split('/')
-    t_pos = params[0].split(' ')
-    t_hex = params[1].split(' ')
-    t_hex = str(t_hex[0])
-    t_opacity = int(params[2])
-    t_scale = int(params[3])
-
-    rgb = tuple(int(t_hex[i:i+2], 16) for i in (0, 2, 4))
-    x = int(t_pos[0])
-    y = int(t_pos[1])
-    a = int((t_opacity*255)/100)
 
     t_text = int(t_text)
 
     if mode == 0:  
+        # cur.execute("SELECT * FROM bot_library WHERE picture_name=? AND picture_pos=?", (user_id,image_name, t_text,))
+        # _data=cur.fetchall()
+        # if len(_data) != 0:
+        #     print(f"Slot for {picture_name} is already used...\nTrying to set step up"
+        #     temp_num = t_text + 1
+        #     while(True):
+        #         cur.execute("SELECT * FROM bot_library WHERE user_id=? AND picture_name=?", (user_id, image_name, t_text,))
+        #         _data=cur.fetchall()
+                
+                
+
+
+        
+
+
         cur.execute(f"INSERT INTO bot_library VALUES ({user_id}, '{image_name}', {msg_id}, {t_text})")
         con.commit()
         print(f"Image '{new_name}' - saved. ")
@@ -69,6 +74,22 @@ async def create_and_send_photo_with_watermark(user_id, image_name, msg_id, t_te
         return
 
 
+    params = _data[0][3]
+    params = params.split('/')
+    t_pos = params[0].split(' ')
+    t_hex = params[1].split(' ')
+    t_hex = str(t_hex[0])
+    t_opacity = int(params[2])
+    t_scale = int(params[3])
+
+    rgb = tuple(int(t_hex[i:i+2], 16) for i in (0, 2, 4))
+    x = int(t_pos[0])
+    y = int(t_pos[1])
+    a = int((t_opacity*255)/100)
+
+
+
+
     title_font = ImageFont.truetype('fonts/PlayfairDisplay-Medium.ttf', t_scale)
     print(_data[0][4])
     inp_photo_dir =  _data[0][4]
@@ -76,7 +97,6 @@ async def create_and_send_photo_with_watermark(user_id, image_name, msg_id, t_te
     format = my_image.format
     my_image = my_image.convert("RGBA")
 
-    new_name = random.randint(26571, 26457454)
 
     txt = Image.new("RGBA", my_image.size, (255, 255, 255, 0))
     d = ImageDraw.Draw(txt)
@@ -84,17 +104,16 @@ async def create_and_send_photo_with_watermark(user_id, image_name, msg_id, t_te
 
     my_image = Image.alpha_composite(my_image, txt).convert("RGB")
 
-    send_path = f"{SAVE_FOLDER}{new_name}.png"
+    send_path = f"{SAVE_FOLDER}{new_name}.jpg"
     print(send_path)
     # my_image.quantize(colors=1024, method=Image.MAXCOVERAGE)
     my_image.save(send_path) #"PNG",
     my_image.close()
+    print(f"Sending file {send_path}")
     await client.send_file(user_id, file=send_path, force_document=True)
-
-    
-    
-
+    print("Done")
     os.remove(send_path)
+    return
 
 
 # optimize=True
