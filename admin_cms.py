@@ -256,7 +256,8 @@ async def admin_cms(event):
         _buttons = []
         for row in _data:
             name = row[1]
-            name_id = f"{name}_image_to_set_accsess_admin_btn".encode("utf-8")
+            name_id = f"{name}_i_s_ac_a_b".encode("utf-8")
+            # print(f"Btn {row[1]}: {name_id}")
             _buttons.append(Button.inline(name, bytes(name_id)))
         _buttons = await convert_1d_to_2d(_buttons, 3)
 
@@ -285,7 +286,7 @@ async def admin_cms_callback(event):
     elif state == SetImageAccessState.SELECT_IMAGE:
         edata_d = event.data.decode('utf-8')
 
-        selected_image_name = edata_d.replace("_image_to_set_accsess_admin_btn", '')
+        selected_image_name = edata_d.replace("_i_s_ac_a_b", '')
         cur.execute("SELECT picture_access FROM image_list WHERE picture_name=?", (selected_image_name,))
         _data = cur.fetchall()
         if len(_data) == 0:
