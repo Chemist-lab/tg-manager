@@ -1,13 +1,9 @@
 from pathlib import Path
-from function import *
-from database_manager import *
+from scripts.function import *
+from scripts.database_manager import *
 import random
 from PIL import Image, ImageFont, ImageDraw 
 import os
-
-from pathlib import Path
-
-from telethon import functions
 import json
 import requests
 

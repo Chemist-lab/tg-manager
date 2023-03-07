@@ -1,8 +1,9 @@
-from database_manager import *
-from function import *
-from user_function import *
+from scripts.database_manager import *
+from scripts.function import *
+from scripts.user.user_function import *
+from scripts.user.user_keyboard import *
+
 from telethon.tl.custom import Button
-from user_keyboard import *
 
 @client.on(events.NewMessage(pattern='/start'))
 async def start_command(event):
@@ -17,7 +18,8 @@ async def start_command(event):
         print("NONO")
     buttons = []
     buttons.append(Button.inline('Получить фото', 'get_photos'))
-    await client.send_message(event.sender_id, 'Привет! Я могу выдать тебе 4к картинки из канала legionCumMander. Для того, чтобы начать нажми "start"', buttons=buttons)
+    await client.send_message(event.sender_id, 'Привет! Я могу выдать тебе 4к картинки из канала legionCumMander. Для того, чтобы начать нажми "Получить фото"', buttons=buttons)
+
 
 
 @client.on(events.CallbackQuery(data='get_photos'))
@@ -25,7 +27,6 @@ async def user_get_image(event):
     await usr_load_5_pic(event)
     
     
-
 
 @client.on(events.CallbackQuery())
 async def user_image_callback(event):

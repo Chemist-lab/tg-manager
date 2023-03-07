@@ -10,11 +10,12 @@ from pathlib import Path
 
 from telethon import events
 from telethon.tl.custom import Button
+from telethon import events, Button
 
 from config import *
-from function import *
-from database_manager import *
-from user_function import create_and_send_photo_with_watermark
+from scripts.function import *
+from scripts.database_manager import *
+from scripts.user.user_function import create_and_send_photo_with_watermark
 
 
 #ADMIN CMS FSM
@@ -47,8 +48,15 @@ admin_state = {}
 
 admin_state_memory = {}
 
+
+async def admin_cancel_btn(event):
+    markup = event.client.build_reply_markup(
+        Button.text('Cancel'))
+    return markup
+
 @client.on(events.NewMessage(pattern='/admin', chats=BOT_ADMIN_ID))
 async def admin_command(event):
+    
     msg = """
 /createphoto
 /deletephoto
@@ -57,12 +65,15 @@ async def admin_command(event):
 /getuserbyphoto
 /library
 """
-    await event.respond(msg)
+    await event.respond(msg, buttons=await admin_cancel_btn(event=event))
 
-@client.on(events.NewMessage(pattern='/cancel', chats=BOT_ADMIN_ID))
+@client.on(events.NewMessage(pattern='Cancel', chats=BOT_ADMIN_ID))
 async def admin_FSM_refresh(event):
-    del admin_state[event.sender_id]
-    await event.respond('Cостояние сброшено!')
+    who = event.sender_id
+    state = admin_state.get(who)
+    if state != None:
+        del admin_state[event.sender_id]
+    await event.respond('Cостояние сброшено!', buttons=Button.clear())
 
 # UPLOAD NEW IMAGE
 @client.on(events.NewMessage(chats=BOT_ADMIN_ID))
@@ -73,6 +84,7 @@ async def admin_cms(event):
     if event.raw_text == '/createphoto':
         if state is None:
             await event.respond('Отправьте фото')
+            
             admin_state[who] = CreateDeletePhotoPackState.SEND_IMAGE
 
     elif state == CreateDeletePhotoPackState.SEND_IMAGE:

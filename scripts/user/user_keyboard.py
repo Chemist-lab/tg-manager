@@ -1,21 +1,12 @@
-from pathlib import Path
-from function import *
-from database_manager import *
-from user_function import *
+from scripts.function import *
+from scripts.database_manager import *
+from scripts.user.user_function import *
 
-import random
-from PIL import Image, ImageFont, ImageDraw 
-import os
-
-from pathlib import Path
-
-from telethon import Button, functions
-import json
-import requests
+from telethon import Button
 
 user_menu_state = {}
 
-user_menu_selection_size = 6
+user_menu_selection_size = 5
 
 async def usr_load_5_pic(event):
     who = event.sender_id
