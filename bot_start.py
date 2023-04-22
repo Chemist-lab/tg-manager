@@ -1,10 +1,13 @@
+# 23465764
+# b0d09e5fdddd42e50eb821496550eb4c
 from config import *
 
-from scripts.database_manager import *
+from database_manager import *
 
-from scripts.admin.admin_cms import *
+from admin_cms import *
 
-from scripts.user.user_commands import *
+from user_commands import *
+
 
 
 from telethon.tl.functions.channels import GetFullChannelRequest
@@ -27,4 +30,3 @@ from telethon.tl.functions.channels import GetFullChannelRequest
 
 client.start()
 client.run_until_disconnected()
-
