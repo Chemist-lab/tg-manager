@@ -9,6 +9,7 @@ admin_menu_selection_size = 12
 
 async def admin_load_pic_table(event, chats=BOT_ADMIN_ID):
     who = event.sender_id
+    
     print(who)
     _buttons = []
 

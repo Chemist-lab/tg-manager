@@ -53,7 +53,7 @@ admin_state_memory = {}
 
 class ImageLibrary(Enum):
     SELECT_IMAGE_LIBRARY = auto()
-    SELECTION_WAIT = auto()
+    SELECTION_VIEW = auto()
     SET_IMAGE_ACCESS = auto()
     START_DELETING_IMAGE = auto()
     START_EDITING = auto()
@@ -74,27 +74,35 @@ async def admin_lib(event):
 async def user_get_image(event):
     who = event.sender_id
     res = await admin_load_pic_table(event)
-    admin_state[who] = CreateDeletePhotoPackState.IMAGE_WATERMARK_SETTINNG
+    admin_state[who] = ImageLibrary.SELECT_IMAGE_LIBRARY
 
 @client.on(events.CallbackQuery())
 async def user_image_callback(event):
     who = event.sender_id
     edata_d = event.data.decode('utf-8')
     _picture_name = None
+    state = admin_state.get(who)
+    if edata_d == "admin_add_photo":
+        await event.respond('Отправьте фото')
+        admin_state[who] = CreateDeletePhotoPackState.SEND_IMAGE
+            
+
     if f'_{who}gi_ad_btn' in edata_d:
         _picture_name = edata_d.replace(f"_{who}gi_ad_btn", '')  
         print(_picture_name)
         buttons = []
-        buttons.append(Button.inline("Изменить доступ к фото", 'admin_edit_access_photo'))
-        buttons.append(Button.inline("Удалить фото", 'admin_delete_photos'))
+        buttons.append(Button.inline("Посмотреть фото", 'admin_view__sel_photo'))
         buttons.append(Button.inline("Редактировать фото", 'admin_edit_photos'))
+        buttons.append(Button.inline("Изменить доступ к фото", 'admin_edit_access_photo'))
         buttons.append(Button.inline("Узнать пользователя за номером", 'admin_get_user_photos'))
+        buttons.append(Button.inline("Удалить фото", 'admin_delete_photos'))
+        buttons.append(Button.inline("Сбросить состояние", 'admin_state_refresh'))
         buttons = await convert_1d_to_2d(buttons, 1)
         await client.send_message(event.sender_id, 'Выберите следуещее действие:', buttons=buttons)
         admin_state_memory[who] = _picture_name
-        admin_state[who] = CreateDeletePhotoPackState.IMAGE_WATERMARK_SETTINNG
+        admin_state[who] = ImageLibrary.SELECT_IMAGE_LIBRARY
 
-    if admin_state[who] == CreateDeletePhotoPackState.IMAGE_WATERMARK_SETTINNG:
+    if state == ImageLibrary.SELECT_IMAGE_LIBRARY:
         if edata_d == 'admin_edit_access_photo':
             admin_state[who] = SetImageAccessState.SELECT_IMAGE
         if edata_d == 'admin_delete_photos':
@@ -106,22 +114,27 @@ async def user_image_callback(event):
             await client.send_message(who,"Введите число на фото.")
             admin_state[who] = GetUserByPhonoNumberState.SELECT_NUMBER_ON_PICTURE
 
+        # if edata_d == 'admin_state_refresh' and admin_state[who] is not None:
+        #     del admin_state[who]
+        #     await event.respond('Cостояние сброшено!')
 
 
-
-
-
-
-
-
-
-
-
-    
 
 
 @client.on(events.NewMessage(pattern='/admin', chats=BOT_ADMIN_ID))
-async def admin_command(event):
+async def admin_kb(event):
+    who = int(event.sender_id)
+    admin_menu_state[who] = 0
+
+    buttons = []
+    buttons.append(Button.inline("Добавить фото", 'admin_add_photo'))
+    buttons.append(Button.inline('Открыть список всех фото', 'admin_get_photos'))
+    buttons = await convert_1d_to_2d(buttons, 1)
+    await client.send_message(event.sender_id, 'Выберите следуещее действие:', buttons=buttons)
+
+
+@client.on(events.NewMessage(pattern='/oldadmin', chats=BOT_ADMIN_ID))
+async def old_admin_command(event):
     msg = """
 /createphoto
 /deletephoto
@@ -131,6 +144,7 @@ async def admin_command(event):
 /library
 """
     await event.respond(msg)
+
 
 @client.on(events.NewMessage(pattern='/cancel', chats=BOT_ADMIN_ID))
 async def admin_FSM_refresh(event):
@@ -183,19 +197,23 @@ scale - размер текста (0, 1, 2, ...).
 
         res = (await save_photo_to_lib(who, image_new_name, params, path))
         await create_and_send_photo_with_watermark(user_id=who, image_name=image_new_name, msg_id=0, t_text='0', mode=3)
-        msg = """
-Изображение успешно добавлено!
 
-Для того, чтобы отредактировать ватермарку напишите: /editphoto
-
-Для того, чтобы открыть доступ до изображения напишите: /pacsess
-        """
-        await client.send_message(who, msg)
-        
         del admin_state[who]
         del admin_state_memory[f'inp_path_{who}']
         del admin_state_memory[f'image_new_name_{who}']
 
+
+
+        _buttons=[]
+        _buttons.append(Button.inline('Открыть список всех фото', 'admin_get_photos'))
+        msg = """
+Изображение успешно добавлено!
+
+Для того, чтобы отредактировать ватермарку или открыть доступ до изображения перейдите в библиотеку всех фото:
+        """
+        await client.send_message(who, msg, buttons=_buttons)
+        
+        
 
 
 async def save_photo_to_lib(_user_id, _picture_name, _params, _image_path):
@@ -321,7 +339,7 @@ async def admin_cms(event):
         cur.execute(f"UPDATE image_list SET image_watermark_params='{new_params}' WHERE picture_name='{selected_image_name}'")
         con.commit()
         await create_and_send_photo_with_watermark(user_id=who, image_name=selected_image_name, msg_id=0, t_text='0', mode=3)
-        await client.send_message(who,f"Теперь новsе параметры для {selected_image_name}: {new_params}.")
+        await client.send_message(who,f"Теперь новые параметры для {selected_image_name}: {new_params}.")
         del admin_state[who]
 
 
