@@ -15,7 +15,7 @@ from config import *
 from function import *
 from database_manager import *
 from user_function import create_and_send_photo_with_watermark
-
+from admin_csm_kb import *
 
 #ADMIN CMS FSM
 class CreateDeletePhotoPackState(Enum):
@@ -46,6 +46,79 @@ class SetImageAccessState(Enum):
 admin_state = {}
 
 admin_state_memory = {}
+
+
+# NEW SELECTION MENU
+
+
+class ImageLibrary(Enum):
+    SELECT_IMAGE_LIBRARY = auto()
+    SELECTION_WAIT = auto()
+    SET_IMAGE_ACCESS = auto()
+    START_DELETING_IMAGE = auto()
+    START_EDITING = auto()
+    GET_USER_PHOTO_NUMBER = auto()
+
+@client.on(events.NewMessage(pattern='/library', chats=BOT_ADMIN_ID))
+async def admin_lib(event):
+    who = int(event.sender_id)
+    admin_menu_state[who] = 0
+
+    buttons = []
+    buttons.append(Button.inline('Открыть список всех фото', 'admin_get_photos'))
+    await client.send_message(event.sender_id, 'Библиотека всех фоток', buttons=buttons)
+
+
+
+@client.on(events.CallbackQuery(data='admin_get_photos'))
+async def user_get_image(event):
+    who = event.sender_id
+    res = await admin_load_pic_table(event)
+    admin_state[who] = CreateDeletePhotoPackState.IMAGE_WATERMARK_SETTINNG
+
+@client.on(events.CallbackQuery())
+async def user_image_callback(event):
+    who = event.sender_id
+    edata_d = event.data.decode('utf-8')
+    _picture_name = None
+    if f'_{who}gi_ad_btn' in edata_d:
+        _picture_name = edata_d.replace(f"_{who}gi_ad_btn", '')  
+        print(_picture_name)
+        buttons = []
+        buttons.append(Button.inline("Изменить доступ к фото", 'admin_edit_access_photo'))
+        buttons.append(Button.inline("Удалить фото", 'admin_delete_photos'))
+        buttons.append(Button.inline("Редактировать фото", 'admin_edit_photos'))
+        buttons.append(Button.inline("Узнать пользователя за номером", 'admin_get_user_photos'))
+        buttons = await convert_1d_to_2d(buttons, 1)
+        await client.send_message(event.sender_id, 'Выберите следуещее действие:', buttons=buttons)
+        admin_state_memory[who] = _picture_name
+        admin_state[who] = CreateDeletePhotoPackState.IMAGE_WATERMARK_SETTINNG
+
+    if admin_state[who] == CreateDeletePhotoPackState.IMAGE_WATERMARK_SETTINNG:
+        if edata_d == 'admin_edit_access_photo':
+            admin_state[who] = SetImageAccessState.SELECT_IMAGE
+        if edata_d == 'admin_delete_photos':
+            admin_state[who] = CreateDeletePhotoPackState.SELECT_IMAGE_TO_DELETE
+        if edata_d == 'admin_edit_photos':
+            admin_state[who] = EditPhotoPackState.SELECT_IMAGE
+            
+        if edata_d == 'admin_get_user_photos':
+            await client.send_message(who,"Введите число на фото.")
+            admin_state[who] = GetUserByPhonoNumberState.SELECT_NUMBER_ON_PICTURE
+
+
+
+
+
+
+
+
+
+
+
+
+    
+
 
 @client.on(events.NewMessage(pattern='/admin', chats=BOT_ADMIN_ID))
 async def admin_command(event):
@@ -189,8 +262,13 @@ async def admin_cms(event):
     elif state == GetUserByPhonoNumberState.SELECT_NUMBER_ON_PICTURE:
         image_num = event.raw_text
         
-        photo_name = admin_state_memory[f'get_image_name_state_{who}']
-
+        photo_name = None
+        if admin_state_memory[who] is not None:
+            photo_name = admin_state_memory[who]
+        else:
+            photo_name = admin_state_memory[f'get_image_name_state_{who}']
+        print(photo_name)
+        print(image_num)
         cur.execute("SELECT user_id FROM bot_library WHERE picture_name=? AND picture_pos=?", (photo_name, image_num,))
         _data=cur.fetchall()
         print(f"\n\n\n\nndata {_data}\n\n\n\n\n")
@@ -202,7 +280,13 @@ async def admin_cms(event):
 
             return
         
+
+
+        from telethon.tl.types import PeerUser, PeerChat, PeerChannel
+
         g_user_id = _data[0][0]
+        print(g_user_id)
+
         req_user = await client.get_entity(g_user_id)
 
         g_user_name = req_user.username
@@ -262,7 +346,6 @@ async def admin_cms(event):
         _buttons = await convert_1d_to_2d(_buttons, 3)
 
         await client.send_message(who,"Выберите фото для изменения доступа", buttons= _buttons)
-        
         admin_state[who] = SetImageAccessState.SELECT_IMAGE
 
 
@@ -285,8 +368,15 @@ async def admin_cms_callback(event):
     #SELECT IMAGE TO CHANGE ACCSESS
     elif state == SetImageAccessState.SELECT_IMAGE:
         edata_d = event.data.decode('utf-8')
+        selected_image_name = None
 
-        selected_image_name = edata_d.replace("_i_s_ac_a_b", '')
+        if admin_state_memory[who] is not None:
+            selected_image_name = admin_state_memory[who]
+        else:
+            selected_image_name = edata_d.replace("_i_s_ac_a_b", '')
+        print()
+        print(selected_image_name)
+        print()
         cur.execute("SELECT picture_access FROM image_list WHERE picture_name=?", (selected_image_name,))
         _data = cur.fetchall()
         if len(_data) == 0:
@@ -304,8 +394,8 @@ async def admin_cms_callback(event):
             button.append(Button.inline("Открыть доступ", bytes(btn_enable)))
 
         await client.send_message(who,f"Установите доступ для {selected_image_name}.", buttons=button)
-
         admin_state[who] = SetImageAccessState.SET_IMAGE_ACCESS
+        
     
     elif state == SetImageAccessState.SET_IMAGE_ACCESS:
         edata_d = event.data.decode('utf-8')
@@ -328,12 +418,18 @@ async def admin_cms_callback(event):
 
         await client.send_message(who, msg)
         del admin_state[who]
+        del admin_state_memory[who]
     
     # SELECT IMAGE TO DELETE
     elif state == CreateDeletePhotoPackState.SELECT_IMAGE_TO_DELETE:
         edata_d = event.data.decode('utf-8')
-        selected_image_name = edata_d.replace(f"_{who}_gi_del_a_b", '')
+        
+        selected_image_name = None
 
+        if admin_state_memory[who] is not None:
+            selected_image_name = admin_state_memory[who]
+        else:
+            selected_image_name = edata_d.replace(f"_{who}_gi_del_a_b", '')
         button = []
         btn_confirm = f"{selected_image_name}_i_yes_del_adm_btn".encode("utf-8") 
         btn_discard = f"{selected_image_name}_i_no_de_adm_btn".encode("utf-8")
@@ -371,8 +467,12 @@ async def admin_cms_callback(event):
     # SELECT IMAGE TO EDIT
     elif state == EditPhotoPackState.SELECT_IMAGE:
         edata_d = event.data.decode('utf-8')
-        selected_image_name = edata_d.replace(f"_{who}_gi_edi_a_b", '')
+        selected_image_name = None
 
+        if admin_state_memory[who] is not None:
+            selected_image_name = admin_state_memory[who]
+        else:
+            selected_image_name = edata_d.replace(f"_{who}_gi_edi_a_b", '')
         button = []
         btn_name = f"{selected_image_name}_EdiNameAdmBtn".encode("utf-8") 
         btn_params = f"{selected_image_name}_EdiParamsAdmBtn".encode("utf-8")

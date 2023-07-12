@@ -3,11 +3,12 @@ from function import *
 from user_function import *
 from telethon.tl.custom import Button
 from user_keyboard import *
-
 @client.on(events.NewMessage(pattern='/start'))
 async def start_command(event):
-    sender_id = int(event.sender_id)
+    sender_id = event.sender_id
     user_menu_state[sender_id] = 0
+
+
     cur.execute('SELECT user_id FROM user_list WHERE user_id = ?', (sender_id,))
     _data=cur.fetchall()
 
@@ -20,8 +21,10 @@ async def start_command(event):
     await client.send_message(event.sender_id, 'Привет! Я могу выдать тебе 4к картинки из канала legionCumMander. Для того, чтобы начать нажми "Получить фото"', buttons=buttons)
 
 
+
 @client.on(events.CallbackQuery(data='get_photos'))
 async def user_get_image(event):
+    
     await usr_load_5_pic(event)
     
     
