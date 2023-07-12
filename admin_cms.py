@@ -89,15 +89,21 @@ async def user_image_callback(event):
 
     if f'_{who}gi_ad_btn' in edata_d:
         _picture_name = edata_d.replace(f"_{who}gi_ad_btn", '')  
-        print(_picture_name)
+
+
         buttons = []
-        buttons.append(Button.inline("Посмотреть фото", 'admin_view__sel_photo'))
+
+
+        buttons.append(Button.inline("Посмотреть фото", 'admin_view_sel_photo'))
         buttons.append(Button.inline("Редактировать фото", 'admin_edit_photos'))
         buttons.append(Button.inline("Изменить доступ к фото", 'admin_edit_access_photo'))
         buttons.append(Button.inline("Узнать пользователя за номером", 'admin_get_user_photos'))
         buttons.append(Button.inline("Удалить фото", 'admin_delete_photos'))
         buttons.append(Button.inline("Сбросить состояние", 'admin_state_refresh'))
+
+
         buttons = await convert_1d_to_2d(buttons, 1)
+
         await client.send_message(event.sender_id, 'Выберите следуещее действие:', buttons=buttons)
         admin_state_memory[who] = _picture_name
         admin_state[who] = ImageLibrary.SELECT_IMAGE_LIBRARY
@@ -105,8 +111,10 @@ async def user_image_callback(event):
     if state == ImageLibrary.SELECT_IMAGE_LIBRARY:
         if edata_d == 'admin_edit_access_photo':
             admin_state[who] = SetImageAccessState.SELECT_IMAGE
+            
         if edata_d == 'admin_delete_photos':
             admin_state[who] = CreateDeletePhotoPackState.SELECT_IMAGE_TO_DELETE
+
         if edata_d == 'admin_edit_photos':
             admin_state[who] = EditPhotoPackState.SELECT_IMAGE
             
@@ -114,11 +122,15 @@ async def user_image_callback(event):
             await client.send_message(who,"Введите число на фото.")
             admin_state[who] = GetUserByPhonoNumberState.SELECT_NUMBER_ON_PICTURE
 
+        if edata_d == "admin_view_sel_photo":
+            await create_and_send_photo_with_watermark(user_id=who, image_name=admin_state_memory[who], msg_id=0, t_text='0', mode=3)
+            del admin_state[who]
+            del admin_state_memory[who]
         # if edata_d == 'admin_state_refresh' and admin_state[who] is not None:
         #     del admin_state[who]
         #     await event.respond('Cостояние сброшено!')
 
-
+    
 
 
 @client.on(events.NewMessage(pattern='/admin', chats=BOT_ADMIN_ID))

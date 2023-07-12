@@ -38,6 +38,7 @@ async def create_and_send_photo_with_watermark(user_id, image_name, msg_id, t_te
     new_name = random.randint(26571, 26457454)
 
     print('Creating new image')
+    print(image_name)
     cur.execute("SELECT * FROM image_list WHERE picture_name=?", (image_name,))
     _data=cur.fetchall()
     if len(_data) == 0:
