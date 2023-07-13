@@ -12,6 +12,10 @@ TG_SAVE_PATH = 'input/'
 
 SAVE_FOLDER = "outp/"
 
+# FULL_PATH = "/root/the-bot/tg-manager/" # Server
+
+FULL_PATH = "" #local pc
+
 
 # main:  5912714019:AAH83PHq51gt2bA6AuYzO7VjjFhRggLGEXo -1001879454560
 

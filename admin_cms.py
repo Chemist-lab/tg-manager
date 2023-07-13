@@ -70,13 +70,13 @@ async def admin_lib(event):
 
 
 
-@client.on(events.CallbackQuery(data='admin_get_photos'))
+@client.on(events.CallbackQuery(data='admin_get_photos', chats=BOT_ADMIN_ID))
 async def user_get_image(event):
     who = event.sender_id
     res = await admin_load_pic_table(event)
     admin_state[who] = ImageLibrary.SELECT_IMAGE_LIBRARY
 
-@client.on(events.CallbackQuery())
+@client.on(events.CallbackQuery(chats=BOT_ADMIN_ID))
 async def user_image_callback(event):
     who = event.sender_id
     edata_d = event.data.decode('utf-8')
@@ -229,11 +229,12 @@ scale - размер текста (0, 1, 2, ...).
 
 
 async def save_photo_to_lib(_user_id, _picture_name, _params, _image_path):
+
     cur.execute("SELECT * FROM image_list WHERE picture_name=?", (_picture_name,))
     _data=cur.fetchall()
     if len(_data) != 0:
         return 2
-    cur.execute(f"INSERT INTO image_list VALUES ('{_user_id}', '{_picture_name}', 'False', '{_params}', '{_image_path}')")
+    cur.execute(f"INSERT INTO image_list VALUES ('{_user_id}', '{_picture_name}', 'False', '{_params}', '{_image_path.replace(FULL_PATH, '')}')")
     con.commit()
     return 0
 
@@ -483,7 +484,7 @@ async def admin_cms_callback(event):
             cur.execute("DELETE FROM image_list WHERE picture_name=?", (selected_image_name,))
             cur.execute("DELETE FROM bot_library WHERE picture_name=?", (selected_image_name,))
             con.commit()
-            os.remove(path)
+            os.remove(FULL_PATH + path)
             await client.send_message(who, f"Фото {selected_image_name} удалено.")
 
         elif f'_i_no_de_adm_btn' in edata_d:

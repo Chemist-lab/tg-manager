@@ -38,7 +38,6 @@ async def create_and_send_photo_with_watermark(user_id, image_name, msg_id, t_te
     new_name = random.randint(26571, 26457454)
 
     print('Creating new image')
-    print(image_name)
     cur.execute("SELECT * FROM image_list WHERE picture_name=?", (image_name,))
     _data=cur.fetchall()
     if len(_data) == 0:
@@ -92,9 +91,9 @@ async def create_and_send_photo_with_watermark(user_id, image_name, msg_id, t_te
 
 
 
-    title_font = ImageFont.truetype('fonts/PlayfairDisplay-Medium.ttf', t_scale)
+    title_font = ImageFont.truetype(FULL_PATH + 'fonts/PlayfairDisplay-Medium.ttf', t_scale)
     print(_data[0][4])
-    inp_photo_dir =  _data[0][4]
+    inp_photo_dir =  FULL_PATH + _data[0][4]
     my_image = Image.open(inp_photo_dir)
     format = my_image.format
     my_image = my_image.convert("RGBA")

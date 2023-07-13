@@ -1,6 +1,13 @@
 import sqlite3
 
-con = sqlite3.connect('Truster.db')
-cur = con.cursor()
+con = None
+cur = None
 
-print('Database has been loaded')
+try:
+    con = sqlite3.connect('Truster.db')
+    cur = con.cursor()
+    print('Database has been loaded')
+except:
+    print("Error while connecting to database")
+
+
