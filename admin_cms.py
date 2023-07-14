@@ -99,7 +99,7 @@ async def user_image_callback(event):
         buttons.append(Button.inline("Изменить доступ к фото", 'admin_edit_access_photo'))
         buttons.append(Button.inline("Узнать пользователя за номером", 'admin_get_user_photos'))
         buttons.append(Button.inline("Удалить фото", 'admin_delete_photos'))
-        buttons.append(Button.inline("Сбросить состояние", 'admin_state_refresh'))
+        # buttons.append(Button.inline("Сбросить состояние", 'admin_state_refresh'))
 
 
         buttons = await convert_1d_to_2d(buttons, 1)
