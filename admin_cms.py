@@ -176,7 +176,7 @@ async def admin_cms(event):
 
     elif state == CreateDeletePhotoPackState.SEND_IMAGE:
         admin_state_memory[f'inp_path_{who}'] = str(await event.download_media(TG_SAVE_PATH))
-        await event.respond('Хорошо! Задайте имя фото:')
+        await event.respond('Хорошо! Задайте имя фото с доблавленой датой в фотмате дд_мм_гг (01_01_23):')
         admin_state[who] = CreateDeletePhotoPackState.IMAGE_WATERMARK_SETTINNG
 
     elif state == CreateDeletePhotoPackState.IMAGE_WATERMARK_SETTINNG:
@@ -508,7 +508,7 @@ async def admin_cms_callback(event):
         btn_name = f"{selected_image_name}_EdiNameAdmBtn".encode("utf-8") 
         btn_params = f"{selected_image_name}_EdiParamsAdmBtn".encode("utf-8")
 
-        button.append(Button.inline("Изменить имя изображения", bytes(btn_name)))
+        button.append(Button.inline("Изменить имя изображения ", bytes(btn_name)))
         button.append(Button.inline("Изменить параметры ватермарки на изображении", bytes(btn_params)))
 
         admin_state[who] = EditPhotoPackState.SELECT_OPTION
@@ -527,7 +527,7 @@ async def edit_image_action(event):
         if '_EdiNameAdmBtn' in edata_d:
             print('_EdiNameAdmBtn')
             name = edata_d.replace(f"_EdiNameAdmBtn", '')
-            await client.send_message(who,f"Введите новое имя {name}.")
+            await client.send_message(who,f"Введите новое имя {name} с доблавленой датой в фотмате дд_мм_гг (01_01_23):")
             admin_state_memory[f"{who}_nn"] = name
             print(admin_state_memory[f"{who}_nn"])
             admin_state[who] = EditPhotoPackState.IMAGE_NEW_NAME

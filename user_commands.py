@@ -10,7 +10,6 @@ async def start_command(event):
 
     if await check_user(sender_id) == False:
         await client.send_message(sender_id,"У вас нет подписки")
-        await event.answer("У вас нет подписки")
         return
 
     cur.execute('SELECT user_id FROM user_list WHERE user_id = ?', (sender_id,))
@@ -42,7 +41,6 @@ async def user_get_image(event):
         return
     
     user_full_menu_list[who] = _data
-
     user_full_menu_list[f"{who} revnum="] = True
     user_full_menu_list[f"{who} revname="] = False
     _data.sort(reverse=True, key=get_date)

@@ -148,7 +148,7 @@ def get_name(item):
 
 def get_date(item):
     res = get_date1(item[1])
-    print(res)
+    # print(res)
     return res
 
 def get_date1(string):

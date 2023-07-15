@@ -81,3 +81,5 @@ async def ad_move_frwrd(event):
     print(f'admin menu state:    {admin_menu_state[who]}')
     await admin_load_pic_table(event)
         
+
+
